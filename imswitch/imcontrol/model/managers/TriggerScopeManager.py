@@ -83,6 +83,12 @@ class TriggerScopeManager(SignalInterface):
             self.runRasterScan(parameterDict)
         elif type == 'pLS-RESOLFTScan':
             self.runpLSRESOLFTScan(parameterDict)
+        elif type == 'GalvoDetectionScan':
+            self.runpLSRESOLFTGalvoScan(parameterDict)
+        elif type == 'MulticolorScan':
+            self.runMulticolorScan(parameterDict)
+        elif type == 'pLS-RESOLFT_multicolor_Scan':
+            self.runpLSRESOLFTMulticolorScan(parameterDict)
         else:
             self.__logger.info('Unknown scan type')
 
@@ -106,9 +112,97 @@ class TriggerScopeManager(SignalInterface):
         for key, value in scanParameters.items():
             self.setParameter(key, value)
 
-
         self.__logger.debug('Parameters set')
         self.send('pLS-RESOLFT_SCAN')
+        self.sigScanStarted.emit()
+    def runpLSRESOLFTMulticolorScan(self, pLSRESOLFTScanParameters):
+        deviceParameters = pLSRESOLFTScanParameters['deviceParameters']
+
+        onLaserTTLLine = self._deviceInfo[deviceParameters['onLaser']]['TTLLine']
+        offLaserTTLLine = self._deviceInfo[deviceParameters['offLaser']]['TTLLine']
+        roLaserTTLLine = self._deviceInfo[deviceParameters['roLaser']]['TTLLine']
+        Laser2TTLLine = self._deviceInfo[deviceParameters['Laser2']]['TTLLine']
+        CameraTTLLine = self._deviceInfo[deviceParameters['CameraTTL']]['TTLLine']
+        roScanDACChan = self._deviceInfo[deviceParameters['roScanDevice']]['DACChannel']
+        cycleScanDACChan = self._deviceInfo[deviceParameters['cycleScanDevice']]['DACChannel']
+        multicolorScanDACChan = self._deviceInfo[deviceParameters['MulticolorScanDevice']]['DACChannel']
+
+        self.setParameter('onLaserTTLChan', onLaserTTLLine)
+        self.setParameter('offLaserTTLChan', offLaserTTLLine)
+        self.setParameter('roLaserTTLChan', roLaserTTLLine)
+        self.setParameter('Laser2TTLChan', Laser2TTLLine)
+        self.setParameter('CameraTTLChan', CameraTTLLine)
+        self.setParameter('roScanDACChan', roScanDACChan)
+        self.setParameter('cycleScanDACChan', cycleScanDACChan)
+        self.setParameter('multicolorScanDACChan', multicolorScanDACChan)
+
+        scanParameters = pLSRESOLFTScanParameters['scanParameters']
+
+        for key, value in scanParameters.items():
+            self.setParameter(key, value)
+
+        self.__logger.debug('Parameters set')
+        self.send('pLS-RESOLFT-Multicolor_SCAN')
+        self.sigScanStarted.emit()
+
+    def runpLSRESOLFTGalvoScan(self, pLSRESOLFTGalvoScanParameters):
+        deviceParameters = pLSRESOLFTGalvoScanParameters['deviceParameters']
+
+        onLaserTTLLine = self._deviceInfo[deviceParameters['onLaser']]['TTLLine']
+        offLaserTTLLine = self._deviceInfo[deviceParameters['offLaser']]['TTLLine']
+        roLaserTTLLine = self._deviceInfo[deviceParameters['roLaser']]['TTLLine']
+        roScanDACChan = self._deviceInfo[deviceParameters['roScanDevice']]['DACChannel']
+        galvoScanDACChan = self._deviceInfo[deviceParameters['galvoScanDevice']]['DACChannel']
+        cycleScanDACChan = self._deviceInfo[deviceParameters['cycleScanDevice']]['DACChannel']
+
+        self.setParameter('onLaserTTLChan', onLaserTTLLine)
+        self.setParameter('offLaserTTLChan', offLaserTTLLine)
+        self.setParameter('roLaserTTLChan', roLaserTTLLine)
+        self.setParameter('roScanDACChan', roScanDACChan)
+        self.setParameter('galvoScanDACChan', galvoScanDACChan)
+        self.setParameter('cycleScanDACChan', cycleScanDACChan)
+
+        scanParameters = pLSRESOLFTGalvoScanParameters['scanParameters']
+
+        for key, value in scanParameters.items():
+            self.setParameter(key, value)
+
+        self.__logger.debug('Parameters set')
+        self.send('galvo_Detection_SCAN')
+        self.sigScanStarted.emit()
+
+    def runMulticolorScan(self, MulticolorScanParameters):
+        deviceParameters = MulticolorScanParameters['deviceParameters']
+
+        Laser1TTLLine = self._deviceInfo[deviceParameters['Laser1']]['TTLLine']
+        Laser2TTLLine = self._deviceInfo[deviceParameters['Laser2']]['TTLLine']
+        Laser3TTLLine = self._deviceInfo[deviceParameters['Laser3']]['TTLLine']
+        Laser4TTLLine = self._deviceInfo[deviceParameters['Laser4']]['TTLLine']
+        Laser5TTLLine = self._deviceInfo[deviceParameters['Laser5']]['TTLLine']
+        CameraTTLLine = self._deviceInfo[deviceParameters['CameraTTL']]['TTLLine']
+        # roLaserTTLLine = self._deviceInfo[deviceParameters['roLaser']]['TTLLine']
+        roScanDACChan = self._deviceInfo[deviceParameters['roScanDevice']]['DACChannel']
+        multicolorScanDACChan = self._deviceInfo[deviceParameters['MulticolorScanDevice']]['DACChannel']
+        cycleScanDACChan = self._deviceInfo[deviceParameters['cycleScanDevice']]['DACChannel']
+
+        self.setParameter('Laser1TTLChan', Laser1TTLLine)
+        self.setParameter('Laser2TTLChan', Laser2TTLLine)
+        self.setParameter('Laser3TTLChan', Laser3TTLLine)
+        self.setParameter('Laser4TTLChan', Laser4TTLLine)
+        self.setParameter('Laser5TTLChan', Laser5TTLLine)
+        self.setParameter('CameraTTLChan', CameraTTLLine)
+        # self.setParameter('roLaserTTLChan', roLaserTTLLine)
+        self.setParameter('roScanDACChan', roScanDACChan)
+        self.setParameter('multicolorScanDACChan', multicolorScanDACChan)
+        self.setParameter('cycleScanDACChan', cycleScanDACChan)
+
+        scanParameters = MulticolorScanParameters['scanParameters']
+
+        for key, value in scanParameters.items():
+            self.setParameter(key, value)
+
+        self.__logger.debug('Parameters set')
+        self.send('multicolor_SCAN')
         self.sigScanStarted.emit()
 
     def runRasterScan(self, rasterScanParameters):
@@ -174,14 +268,23 @@ class TriggerScopeManager(SignalInterface):
     def sendTTL(self, ttlLine, value):
         self.send("TTL" + str(ttlLine) + "," + str(value), 0)
 
-    def setDigital(self, target, booleanValue):
-        msg = 'TTL' + str(self._deviceInfo[target]['Channel']) + ',' + str(booleanValue)
+    # def setDigital(self, target, booleanValue):
+    #     msg = 'TTL' + str(self._deviceInfo[target]['Channel']) + ',' + str(booleanValue)
+    #     self.send(msg)
+    def setDigital(self, target, enable):
+        msg = 'TTL' + str(self._deviceInfo[target]['Channel']) + ',' + str(enable)
         self.send(msg)
-
     def setAnalog(self, target, voltage):
 
         if self._deviceInfo[target]['MinV'] <= voltage <= self._deviceInfo[target]['MaxV']:
             msg = 'DAC' + str(self._deviceInfo[target]['DACChannel']) + ',' + str(voltage)
+            self.send(msg)
+        else:
+            self.__logger.warning('Trying to set Triggerscope voltage outside allowed range')
+    def setAnalogTTLline(self,target,voltage):
+        if self._deviceInfo[target]['MinV'] <= voltage <= self._deviceInfo[target]['MaxV']:
+            # msg = 'DAC' + str(self._deviceInfo[target]['TTLLine']) + ',' + str(voltage)
+            msg = 'DAC' + str(5) + ',' + str(voltage)
             self.send(msg)
         else:
             self.__logger.warning('Trying to set Triggerscope voltage outside allowed range')
