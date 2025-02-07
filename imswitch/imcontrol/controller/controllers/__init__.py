@@ -17,5 +17,8 @@ from .ViewController import ViewController
 from .WellPlateController import WellPlateController
 from .TriggerScopeRasterController import TriggerScopeRasterController
 from .TriggerScopePLSRController import TriggerScopePLSRController
+from .TriggerScopeGalvoDetectionController import TriggerScopeGalvoDetectionController
+from .LightSheetMulticolorController import LightSheetMulticolorController
 from .BSC203Controller import BSC203Controller
 from .SetupStatusController import SetupStatusController
+from .TriggerScopePLSRMulticolorController import TriggerScopePLSRMulticolorController

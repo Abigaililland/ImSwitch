@@ -18,5 +18,9 @@ from .basewidgets import WidgetFactory
 from .WellPlateWidget import WellPlateWidget
 from .TriggerScopeRasterWidget import TriggerScopeRasterWidget
 from .TriggerScopePLSRWidget import TriggerScopePLSRWidget
+from .TriggerScopeGalvoDetectionWidget import TriggerScopeGalvoDetectionWidget
+from .LightSheetMulticolorWidget import LightSheetMulticolorWidget
+from .TriggerScopePLSRMulticolorWidget import TriggerScopePLSRMulticolorWidget
+
 from .BSC203Widget import BSC203Widget
 from .SetupStatusWidget import SetupStatusWidget
