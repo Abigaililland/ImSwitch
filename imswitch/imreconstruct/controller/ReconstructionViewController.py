@@ -17,7 +17,7 @@ class ReconstructionViewController(ImRecWidgetController):
 
         self._widget.sigItemSelected.connect(self.listItemChanged)
         self._widget.sigAxisStepChanged.connect(self.axisStepChanged)
-        self._widget.sigViewChanged.connect(lambda: self.fullUpdate(levels=None))
+        self._widget.sigViewChanged.connect(lambda: self.fullUpdate(levels=None, images=self._widget.image_to_update))
 
 
     def getActiveReconObj(self):
@@ -44,7 +44,15 @@ class ReconstructionViewController(ImRecWidgetController):
 
         self._currItemInd = self._widget.getCurrentItemIndex()
 
-    def fullUpdate(self, autoLevels=False, levels=None):
+    def fullUpdate(self, autoLevels=False, levels=None, images=[]):
+
+        for image in images :
+            self.setImgSlice(autoLevels=autoLevels, levels=levels, image=image)
+            if (self._currItemInd is None or self._prevViewId is None or
+                    self.getViewId() != self._prevViewId):
+                self._widget.resetView()
+
+
         reconObj = self._widget.getCurrentItemData()
         if reconObj is not None:
             self.setImgSlice(autoLevels=autoLevels, levels=levels)
@@ -53,11 +61,15 @@ class ReconstructionViewController(ImRecWidgetController):
                 self._widget.resetView()
         else:
             self._widget.clearImage()
-
         self._prevViewId = self.getViewId()
 
-    def setImgSlice(self, autoLevels=False, levels=None):
-        data = self._widget.getCurrentItemData().getReconstruction()
+
+
+    def setImgSlice(self, autoLevels=False, levels=None, image=None):
+        if image is None :
+            data = self._widget.getCurrentItemData().getReconstruction()
+        else :
+            data = image[1].copy()
         if data is None:
             pass
         if self.getViewId() == 0:
@@ -67,14 +79,25 @@ class ReconstructionViewController(ImRecWidgetController):
         else:
             transposeOrder = [0, 3, 1, 2]
 
+
         im = data.transpose(*transposeOrder)
         axisLabels = np.array(['Time point', 'Slice', 'Y', 'X'])[transposeOrder]
         self._transposeOrder = transposeOrder
-        self._widget.setImage(im, axisLabels)
-        if autoLevels:
-            self.updateLevelsRange()
-        elif levels is not None:
-            self._widget.setImageDisplayLevels(*levels)
+        if image is None :
+            self._widget.setImage(im, axisLabels)
+            if autoLevels:
+                self.updateLevelsRange()
+            elif levels is not None:
+                self._widget.setImageDisplayLevels(*levels)
+        else :
+            im = np.ascontiguousarray(im)
+            image[0].data = im
+            if autoLevels:
+                self.updateLevelsRange(image=image[1])
+            elif levels is not None:
+                self._widget.setImageDisplayLevels(*levels, image=image[1])
+
+
 
     def getViewId(self):
         viewName = self._widget.getViewName()
@@ -96,21 +119,30 @@ class ReconstructionViewController(ImRecWidgetController):
 
         self._axisStep = newAxisStep
 
-    def updateLevelsRange(self, base=None):
+    def updateLevelsRange(self, base=None, image=None):
         baseAxisIndex = self._transposeOrder.index(1)
         if base is None:
             base = self._axisStep[baseAxisIndex]
 
         # Find image at current base
-        im = self._widget.getImage()
+        if image is None :
+            im = self._widget.getImage()
+        else :
+            im=image.data
         indexForImage = [slice(None) for _ in range(len(im.shape))]
         indexForImage[baseAxisIndex] = base
         imAtBase = im[tuple(indexForImage)]
 
         # Update levels
         levels = imAtBase.min(), imAtBase.max()
-        self._widget.setImageDisplayLevelsRange(*levels)
-        self._widget.setImageDisplayLevels(*levels)
+
+        if image is None :
+            self._widget.setImageDisplayLevelsRange(*levels)
+            self._widget.setImageDisplayLevels(*levels)
+
+        if image is not None :
+            self.image.contrast_limits_range = (imAtBase.min(), imAtBase.max())
+            self.image.contrast_limits = (imAtBase.min(), imAtBase.max())
 
     def updateRecon(self):
         reconObj = self._widget.getCurrentItemData()

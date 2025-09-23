@@ -22,7 +22,7 @@ class Reconstructor:
     def getReconstructionSize(self, dataShape, cam_px_size, alpha_rad, dy_step_size, recon_vx_size):
         """Get size of reconstruction, this is just a very ugly temp solution"""
 
-        camera_offset = 100
+        camera_offset = 200
 
         """Make coordiate transformation matrix such that sampleCoordinates = M * dataCoordinates"""
         transformation_mat = cp.array([[cam_px_size * np.sin(alpha_rad), 0, 0],
@@ -46,7 +46,7 @@ class Reconstructor:
     def simpleDeskew(self, data, cam_px_size, alpha_rad, dy_step_size, recon_vx_size):
         """Deskew the data in one step transform"""
 
-        camera_offset = 100
+        camera_offset = 200
 
         """Make coordiate transformation matrix such that sampleCoordinates = M * dataCoordinates"""
         transformation_mat = cp.array([[cam_px_size * np.sin(alpha_rad), 0, 0],

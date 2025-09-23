@@ -108,7 +108,7 @@ c_px = 116
 alpha = np.deg2rad(35)
 dy = 210
 sample_vx_size = 40
-camera_offset = 100
+camera_offset = 200
 """ optical PSF generation/loading """
 psf_folder = r'\\storage3.ad.scilifelab.se\testalab\Andreas\SOLS\Scripts\PSFs'
 psf_file = r'PSF_1.26NA_RW_40nmVX_large.tif'

@@ -23,9 +23,19 @@ class ReconstructionView(QtWidgets.QFrame):
         self.napariViewer.dims.events.connect(self.dimsChanged)
         naparitools.NapariUpdateLevelsWidget.addToViewer(self.napariViewer)
 
+
         self.imgLayer = self.napariViewer.add_image(
             np.zeros((1, 1)), rgb=False, name='Reconstruction', colormap='grayclip', protected=True
         )
+        self.image_to_update = [];
+
+        """
+        self.imgLayerGreen = self.napariViewer.add_image(
+            np.zeros((1, 1)), rgb=False, name='Reconstruction Green', colormap='green', protected=True
+        )
+        self.imgLayerOrange = self.napariViewer.add_image(
+            np.zeros((1, 1)), rgb=False, name='Reconstruction Orange', colormap='orange', protected=True
+        )"""
 
         # Button group for choosing view
         self.chooseViewGroup = QtWidgets.QButtonGroup()
@@ -59,6 +69,7 @@ class ReconstructionView(QtWidgets.QFrame):
         removeAllReconBtn = guitools.BetterPushButton('Remove all')
         removeAllReconBtn.clicked.connect(self.removeAllRecon)
 
+
         # Set initial states
         self.standardView.setChecked(True)
 
@@ -81,7 +92,7 @@ class ReconstructionView(QtWidgets.QFrame):
         if event.type == 'current_step':
             self.sigAxisStepChanged.emit(event.value)
 
-    def addNewData(self, reconObj, name):
+    def addNewData(self, reconObj, name, get_Item=False):
         ind = 0
         for i in range(self.reconList.count()):
             if name + '.' + str(ind) == self.reconList.item(i).data(0):
@@ -92,6 +103,9 @@ class ReconstructionView(QtWidgets.QFrame):
         listItem.setData(1, reconObj)
         self.reconList.addItem(listItem)
         self.reconList.setCurrentItem(listItem)
+
+        if get_Item :
+            return listItem
 
     def getCurrentItemIndex(self):
         return self.reconList.indexFromItem(self.reconList.currentItem()).row()
@@ -124,8 +138,11 @@ class ReconstructionView(QtWidgets.QFrame):
     def getImageDisplayLevels(self):
         return self.imgLayer.contrast_limits
 
-    def setImageDisplayLevels(self, minimum, maximum):
-        self.imgLayer.contrast_limits = (minimum, maximum)
+    def setImageDisplayLevels(self, minimum, maximum, image=None):
+        if image is None:
+            self.imgLayer.contrast_limits = (minimum, maximum)
+        else :
+            self.image.contrast_limits = (minimum, maximum)
 
     def setImageDisplayLevelsRange(self, minimum, maximum):
         self.imgLayer.contrast_limits_range = (minimum, maximum)

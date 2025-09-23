@@ -21,6 +21,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
     sigSetSaveFolder = QtCore.Signal()
 
     sigReconstuctCurrent = QtCore.Signal()
+    sigReconstuctMulti = QtCore.Signal()
     sigReconstructMultiConsolidated = QtCore.Signal()
     sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
@@ -80,6 +81,7 @@ class ImRecMainView(QtWidgets.QMainWindow):
 
         btnFrame = BtnFrame()
         btnFrame.sigReconstuctCurrent.connect(self.sigReconstuctCurrent)
+        btnFrame.sigReconstuctMulti.connect(self.sigReconstuctMulti)
         btnFrame.sigReconstructMultiConsolidated.connect(self.sigReconstructMultiConsolidated)
         btnFrame.sigReconstructMultiIndividual.connect(self.sigReconstructMultiIndividual)
         btnFrame.sigQuickLoadData.connect(self.sigQuickLoadData)
@@ -146,8 +148,43 @@ class ImRecMainView(QtWidgets.QMainWindow):
     def raiseMultiDataDock(self):
         self.multiDataDock.raiseDock()
 
-    def addNewReconstruction(self, reconObj, name):
-        self.reconstructionWidget.addNewData(reconObj, name)
+    def addNewReconstruction(self, reconObj, name, image_mode=False, get_Item=False):
+        if get_Item :
+            item=self.reconstructionWidget.addNewData(reconObj, name, get_Item=True)
+        else :
+            self.reconstructionWidget.addNewData(reconObj, name)
+        viewer = self.reconstructionWidget.napariViewer
+        color_map = None
+
+        # if name=='crop_green.hdf5':
+        if name.endswith('crop_green.hdf5'):
+            color_map = 'green'
+            name="crop_green"
+            image_mode = True
+
+        elif name.endswith('crop_orange.hdf5'):
+            color_map = 'orange'
+            name="crop_orange"
+            image_mode = True
+        elif name.endswith('crop_red.hdf5'):
+            color_map = 'red'
+            name="crop_red"
+            image_mode = True
+
+        if image_mode :
+            if name in viewer.layers:
+                for k in self.reconstructionWidget.image_to_update:
+                    (layer, copy) = k
+                    if layer.name == name:
+                        self.reconstructionWidget.image_to_update.remove(k)
+                        break
+                viewer.layers.remove(name)
+            im = viewer.add_image(reconObj.getReconstruction(), name=name, colormap=color_map,blending="additive")
+            self.reconstructionWidget.image_to_update.append((im, reconObj.getReconstruction().copy()))
+
+        if get_Item:
+            return item
+
 
     def getMultiDatas(self):
         dataList = self.multiDataFrame.dataList
@@ -239,6 +276,7 @@ class ReconParTree(ParameterTree):
 
 class BtnFrame(QtWidgets.QFrame):
     sigReconstuctCurrent = QtCore.Signal()
+    sigReconstuctMulti = QtCore.Signal()
     sigReconstructMultiConsolidated = QtCore.Signal()
     sigReconstructMultiIndividual = QtCore.Signal()
     sigQuickLoadData = QtCore.Signal()
@@ -249,6 +287,8 @@ class BtnFrame(QtWidgets.QFrame):
 
         self.reconCurrBtn = BetterPushButton('Reconstruct current')
         self.reconCurrBtn.clicked.connect(self.sigReconstuctCurrent)
+        self.reconCurrMultiBtn = BetterPushButton('Reconstruct multicolor')
+        self.reconCurrMultiBtn.clicked.connect(self.sigReconstuctMulti)
         self.quickLoadDataBtn = BetterPushButton('Quick load data')
         self.quickLoadDataBtn.clicked.connect(self.sigQuickLoadData)
         self.updateBtn = BetterPushButton('Update reconstruction')
@@ -272,7 +312,8 @@ class BtnFrame(QtWidgets.QFrame):
 
         layout.addWidget(self.quickLoadDataBtn, 0, 0, 1, 2)
         layout.addWidget(self.reconCurrBtn, 1, 0, 1, 2)
-        layout.addWidget(self.reconMultiBtn, 2, 0, 1, 2)
+        layout.addWidget(self.reconCurrMultiBtn, 2, 0, 1, 2)
+        layout.addWidget(self.reconMultiBtn, 3, 0, 1, 2)
         # layout.addWidget(self.updateBtn, 2, 0, 1, 2)
 
 

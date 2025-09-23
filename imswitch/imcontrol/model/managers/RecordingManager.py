@@ -172,11 +172,15 @@ class RecordingWorker(Worker):
 
         shapes = {detectorName: self.__recordingManager.detectorsManager[detectorName].shape
                   for detectorName in self.detectorNames}
+        MAX_FRAMES = 200
+        i = 0
 
         currentFrame = {}
         datasets = {}
         for detectorName in self.detectorNames:
             currentFrame[detectorName] = 0
+            i = 0
+
 
             datasetName = detectorName
             if self.recMode == RecMode.ScanLapse and self.singleLapseFile:
@@ -321,6 +325,7 @@ class RecordingWorker(Worker):
                             name, file, filePath, True
                         )
                 else:
+
                     file.close()
 
             self.__recordingManager.endRecording(wait=False)
