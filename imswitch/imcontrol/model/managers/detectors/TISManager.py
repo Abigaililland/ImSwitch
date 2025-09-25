@@ -2,7 +2,7 @@ import numpy as np
 
 from imswitch.imcommon.model import initLogger
 from .DetectorManager import DetectorManager, DetectorAction, DetectorNumberParameter
-
+import copy
 
 class TISManager(DetectorManager):
     """ DetectorManager that deals with TheImagingSource cameras and the
@@ -52,7 +52,27 @@ class TISManager(DetectorManager):
         super().__init__(detectorInfo, name, fullShape=fullShape, supportedBinnings=[1],
                          model=model, parameters=parameters, actions=actions, croppable=True)
 
-    def getLatestFrame(self):
+
+
+    def wait_and_get_NewFrame(self, acquisition_started_after=False):
+        """The aim of this function is to use callback camera's feature to wait until a new frame is released and get this new frame.
+        The boolean allow to waste a frame, set to True if the application need the frame's recording to have started after the call of this function
+
+        Warning : without deepcopy, the adress is recorded and not the tru frame, so the frame may change as the camera acquire a new frame"""
+        if acquisition_started_after :
+            self._camera.cam.reset_frame_ready()
+            self._camera.cam.wait_til_frame_ready()
+
+        self._camera.cam.reset_frame_ready()
+        self._camera.cam.wait_til_frame_ready()
+
+        img=self.getLatestFrame()
+
+        image=copy.deepcopy(img)
+
+        return image
+
+    def getLatestFrame(self,is_save=True):
         if not self._adjustingParameters:
             self.__image = self._camera.grabFrame()
         return self.__image
@@ -78,7 +98,7 @@ class TISManager(DetectorManager):
         contain a key with the specified parameter name, an error will be
         raised."""
 
-        if name not in self._parameters:
+        if name not in self._DetectorManager__parameters:
             raise AttributeError(f'Non-existent parameter "{name}" specified')
 
         value = self._camera.getPropertyValue(name)
@@ -148,6 +168,8 @@ class TISManager(DetectorManager):
         from imswitch.imcontrol.model.interfaces.tiscamera import CameraTIS
         self.__logger.debug(f'Trying to initialize TIS camera {cameraId}')
         camera = CameraTIS(cameraId)
+
+        camera.cam.register_frame_ready_callback() #MODIF
         # except Exception:
         #     self.__logger.warning(f'Failed to initialize TIS camera {cameraId}, loading mocker')
         #     from imswitch.imcontrol.model.interfaces.tiscamera_mock import MockCameraTIS

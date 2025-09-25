@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 from imswitch.imcommon.controller import WidgetController, WidgetControllerFactory
 from imswitch.imcontrol.model import InvalidChildClassError
 
@@ -46,11 +48,13 @@ class LiveUpdatedController(ImConWidgetController):
 class SuperScanController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self._analogParameterDict = None
-        # self._digitalParameterDict = None
+        self._analogParameterDict = {}
+        self._digitalParameterDict = {}
         # Make non-overwritable functions
         self.isValidScanController = self.__isValidScanController
         self.isValidChild = self.isValidScanController
+
+
 
     # @property
     # def stageParameterList(self):
@@ -75,6 +79,12 @@ class SuperScanController(ImConWidgetController):
             raise InvalidChildClassError('ScanController needs to return a valid parameterDict')
         else:
             return True
+
+
+
+    def sendScanParameters(self):
+        self.getParameters()
+        self._commChannel.sigSendScanParameters.emit(self._analogParameterDict, self.digitalParametersDict, self._positrionersScan)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

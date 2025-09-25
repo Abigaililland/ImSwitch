@@ -40,6 +40,7 @@ class LaserController(ImConWidgetController):
         self._commChannel.sigScanStarting.connect(lambda: self.scanChanged(True))
         self._commChannel.sigScanBuilt.connect(self.scanBuilt)
         self._commChannel.sigScanEnded.connect(lambda: self.scanChanged(False))
+        self._commChannel.sigSetLaserValue.connect(lambda laserName, value : self.setLaserValue(laserName, value))
 
         # Connect LaserWidget signals
         self._widget.sigEnableChanged.connect(self.toggleLaser)

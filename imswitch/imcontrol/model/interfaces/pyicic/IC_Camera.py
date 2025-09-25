@@ -491,6 +491,15 @@ class IC_Camera:
         def cb_func(handle_ptr, p_data, frame_num, data):
             self._frame['ready'] = True
             self._frame['num'] = frame_num
+
+            index = frame_num - 1
+            if index >= len(self._data_ptrs):
+                # Expand the list to fit the new index
+                self._data_ptrs.extend([None] * (index + 1 - len(self._data_ptrs)))
+
+
+            self._data_ptrs[index] = p_data
+
             self._data_ptrs[frame_num - 1] = p_data
 
         return C_FRAME_READY_CALLBACK(cb_func)

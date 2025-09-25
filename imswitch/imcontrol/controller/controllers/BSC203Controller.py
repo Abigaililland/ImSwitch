@@ -49,7 +49,7 @@ class BSC203Controller(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         home = False
-        port = 'COM11'
+        port = 'COM14'
         try:
             self.dev = BSC(serial_port=port, vid=None, pid=None, manufacturer=None, product=None, serial_number=None,
                            location=None, home=home, x=3, invert_direction_logic=False, swap_limit_switches=True)

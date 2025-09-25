@@ -10,7 +10,9 @@ class SetupStatusController(ImConWidgetController):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        flipMirrorCOMs = ('COM6', 'COM5', 'COM4')
+        flipMirrorCOMs = ('COM6', 'COM5', 'COM11')
+        
+        
         self.tiltedCamName = 'Orca' #Names in imageWidget set in config file
         self.straightCamName = 'WidefieldCamera'
 
@@ -60,6 +62,10 @@ class SetupStatusController(ImConWidgetController):
 
         #Connect keyboard/mouse signals
         self._commChannel.sigKeyReleased.connect(self.keyReleased)
+
+        #Connect Et
+        self._commChannel.sigSetConfig.connect(lambda config_mame : self.setConfig(self.setupConfigs[config_mame]))
+        #self._commChannel.sigsetFlipMirrorPositions.connect(lambda positionList : self.setFlipMirrorPositions(positionList))
 
         #Connect widget signals
         self._widget.rotationStagePosEdit.editingFinished.connect(self.setRotationStagePosFromEdit)

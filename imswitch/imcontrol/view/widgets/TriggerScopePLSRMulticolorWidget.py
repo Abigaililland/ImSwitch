@@ -98,6 +98,7 @@ class TriggerScopePLSRMulticolorWidget(Widget):
 
         roTimeLabel = QtWidgets.QLabel('RO-pulse time (ms)')
         self.roTimeEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.roTimeEdit.setMaximum(1000)
         self.roTimeEdit.editingFinished.connect(self.sigParameterChanged)
 
         delayAfterRoLabel = QtWidgets.QLabel('Delay after RO-pulse (ms)')
@@ -149,10 +150,19 @@ class TriggerScopePLSRMulticolorWidget(Widget):
         self.Laser2OnEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
         self.Laser2OnEdit.editingFinished.connect(self.sigParameterChanged)
 
+        Laser3OnLabel = QtWidgets.QLabel('Laser 3 on time (ms)')
+        self.Laser3OnEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.Laser3OnEdit.editingFinished.connect(self.sigParameterChanged)
+
         DelayAfterLaser2Label = QtWidgets.QLabel('Delay after Laser 2 (ms)')
         self.DelayAfterLaser2Edit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
         self.DelayAfterLaser2Edit.setMaximum(1000)
         self.DelayAfterLaser2Edit.editingFinished.connect(self.sigParameterChanged)
+
+        DelayAfterLaser3Label = QtWidgets.QLabel('Delay after Laser 3 (ms)')
+        self.DelayAfterLaser3Edit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.DelayAfterLaser3Edit.setMaximum(1000)
+        self.DelayAfterLaser3Edit.editingFinished.connect(self.sigParameterChanged)
 
         MulticolorScanFirstLabel = QtWidgets.QLabel('Multicolor scan first position (V)')
         self.MulticolorScanFirstEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
@@ -165,6 +175,12 @@ class TriggerScopePLSRMulticolorWidget(Widget):
         self.MulticolorScanSecondEdit.setMinimum(-500)
         self.MulticolorScanSecondEdit.setMaximum(500)
         self.MulticolorScanSecondEdit.editingFinished.connect(self.sigParameterChanged)
+
+        MulticolorScanThirdLabel = QtWidgets.QLabel('Multicolor scan third position (V)')
+        self.MulticolorScanThirdEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.MulticolorScanThirdEdit.setMinimum(-500)
+        self.MulticolorScanThirdEdit.setMaximum(500)
+        self.MulticolorScanThirdEdit.editingFinished.connect(self.sigParameterChanged)
 
         onLaserLabel = QtWidgets.QLabel('On laser')
         self.onLaserEdit = guitools.BetterComboBox(allowScrollChanges=False)
@@ -186,6 +202,8 @@ class TriggerScopePLSRMulticolorWidget(Widget):
 
         Laser2Label = QtWidgets.QLabel('Laser 2')
         self.Laser2Edit = guitools.BetterComboBox(allowScrollChanges=False)
+        Laser3Label = QtWidgets.QLabel('Laser 3')
+        self.Laser3Edit = guitools.BetterComboBox(allowScrollChanges=False)
 
         CameraTTLLabel = QtWidgets.QLabel('Camera used for detection')
         self.CameraTTLEdit = guitools.BetterComboBox(allowScrollChanges=False)
@@ -283,8 +301,15 @@ class TriggerScopePLSRMulticolorWidget(Widget):
         self.grid.addWidget(MulticolorScanSecondLabel, currentRow, 2)
         self.grid.addWidget(self.MulticolorScanSecondEdit, currentRow, 3)
         currentRow += 1
+        self.grid.addWidget(MulticolorScanThirdLabel, currentRow, 0)
+        self.grid.addWidget(self.MulticolorScanThirdEdit, currentRow, 1)
+        self.grid.addWidget(Laser3OnLabel, currentRow, 2)
+        self.grid.addWidget(self.Laser3OnEdit, currentRow, 3)
+        currentRow += 1
         self.grid.addWidget(DelayAfterLaser2Label, currentRow, 0)
         self.grid.addWidget(self.DelayAfterLaser2Edit, currentRow, 1)
+        self.grid.addWidget(DelayAfterLaser3Label, currentRow, 2)
+        self.grid.addWidget(self.DelayAfterLaser3Edit, currentRow, 3)
         currentRow += 1
         self.grid.addItem(
             QtWidgets.QSpacerItem(40, 20,
@@ -310,6 +335,10 @@ class TriggerScopePLSRMulticolorWidget(Widget):
         self.grid.addWidget(self.CameraTTLEdit, currentRow, 1)
         self.grid.addWidget(MulticolorScanDeviceLabel, currentRow, 2)
         self.grid.addWidget(self.MulticolorScanDeviceEdit, currentRow, 3)
+        currentRow += 1
+        self.grid.addWidget(Laser3Label, currentRow, 0)
+        self.grid.addWidget(self.Laser3Edit, currentRow, 1)
+
 
         # Connect signals
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
@@ -457,11 +486,22 @@ class TriggerScopePLSRMulticolorWidget(Widget):
     def setLaser2OnMs(self, value):
         self.Laser2OnEdit.setValue(value)
 
+    def getLaser3OnMs(self):
+        return self.Laser3OnEdit.value()
+
+    def setLaser3OnMs(self, value):
+        self.Laser3OnEdit.setValue(value)
+
     def getDelayAfterLaser2Ms(self):
         return self.DelayAfterLaser2Edit.value()
 
     def setDelayAfterLaser2Ms(self, value):
         self.DelayAfterLaser2Edit.setValue(value)
+    def getDelayAfterLaser3Ms(self):
+        return self.DelayAfterLaser3Edit.value()
+
+    def setDelayAfterLaser3Ms(self, value):
+        self.DelayAfterLaser3Edit.setValue(value)
 
     def getMulticolorScanFirstUm(self):
         return self.MulticolorScanFirstEdit.value()
@@ -475,12 +515,25 @@ class TriggerScopePLSRMulticolorWidget(Widget):
     def setMulticolorScanSecondUm(self, value):
         self.MulticolorScanSecondEdit.setValue(value)
 
+    def getMulticolorScanThirdUm(self):
+        return self.MulticolorScanThirdEdit.value()
+
+    def setMulticolorScanThirdUm(self, value):
+        self.MulticolorScanThirdEdit.setValue(value)
+
     def getLaser2(self):
         return self.Laser2Edit.currentText()
 
     def setLaser2(self, value):
         ind = self.Laser2Edit.findText(value)
         self.Laser2Edit.setCurrentIndex(ind)
+
+    def getLaser3(self):
+        return self.Laser3Edit.currentText()
+
+    def setLaser3(self, value):
+        ind = self.Laser3Edit.findText(value)
+        self.Laser3Edit.setCurrentIndex(ind)
 
     def getCameraTTL(self):
         return self.CameraTTLEdit.currentText()

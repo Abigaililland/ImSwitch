@@ -357,7 +357,7 @@ class ScanController(SuperScanController):
         for key, value in self._digitalParameterDict.items():
             self.setSharedAttr(_attrCategoryTTL, key, value)
 
-    @APIExport(runOnUIThread=True)
+    #@APIExport(runOnUIThread=True)
     def runScan(self) -> None:
         """ Runs a scan with the set scanning parameters. """
         self.runScanAdvanced(sigScanStartingEmitted=False)

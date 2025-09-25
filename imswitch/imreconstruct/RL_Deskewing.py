@@ -104,7 +104,9 @@ data = data[50:100, 50:152, 200:400]
 flip_data = False
 
 
-c_px = 116
+# c_px = 116
+c_px = 112
+
 alpha = np.deg2rad(35)
 dy = 210
 sample_vx_size = 40

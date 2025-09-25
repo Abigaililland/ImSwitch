@@ -9,8 +9,8 @@ from imswitch.imcommon.model import APIExport, dirtools
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.view.guitools import colorutils
 
-class TriggerScopePLSRMulticolorController(ImConWidgetController):
-    """ Linked to TriggerScopeRasterWidget."""
+class TriggerScopeLSXYRController(ImConWidgetController):
+    """ Controller for the TriggerScopeLSXYRController widget. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -18,9 +18,12 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
         self.settingAttr = False
         self.settingParameters = False
 
+        # self._analogParameterDict = {}
+        # self._digitalParameterDict = {}
         self._scanParameterDict = {}
         self._deviceParameterDict = {}
-
+        self.signalDict = None
+        self.scanInfoDict = None
         self.isRunning = False
         self.doingNonFinalPartOfSequence = False
 
@@ -29,23 +32,28 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             os.makedirs(self.scanDir)
 
         self.updateScanParDict()
+        # self.updateSteps()
+        # self.plotSignalGraph()
+        # self.updateScanStageAttrs()
+        # self.updateScanTTLAttrs()
 
         self.positioners = {
             pName: pManager for pName, pManager in self._setupInfo.positioners.items()
             if pManager.forScanning
         }
+
         self.TTLDevices = self._setupInfo.getTTLDevices()
+
         #Add TTL devices to combobox
         self._widget.onLaserEdit.addItems(self.TTLDevices.keys())
         self._widget.offLaserEdit.addItems(self.TTLDevices.keys())
         self._widget.roLaserEdit.addItems(self.TTLDevices.keys())
         self._widget.CameraTTLEdit.addItems(self.TTLDevices.keys())
-        self._widget.Laser2Edit.addItems(self.TTLDevices.keys())
-        self._widget.Laser3Edit.addItems(self.TTLDevices.keys())
 
         self._widget.roScanDeviceEdit.addItems(self.positioners.keys())
         self._widget.cycleScanDeviceEdit.addItems(self.positioners.keys())
-        self._widget.MulticolorScanDeviceEdit.addItems(self.positioners.keys())
+        self._widget.rasterXScanDeviceEdit.addItems(self.positioners.keys())
+        self._widget.rasterYScanDeviceEdit.addItems(self.positioners.keys())
 
         # Connect NidaqManager signals
         self._master.triggerScopeManager.sigScanStarted.connect(
@@ -56,6 +64,7 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
         # Connect CommunicationChannel signals
         self._commChannel.sigRunScan.connect(self.runScanExternal)
         self._commChannel.sigAbortScan.connect(self.abortScan)
+        # self._commChannel.sharedAttrs.sigAttributeSet.connect(self.attrChanged)
 
         # Connect ScanWidget signals
         self._widget.sigSaveScanClicked.connect(self.saveScan)
@@ -63,31 +72,25 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
         self._widget.sigRunScanClicked.connect(self.runScan)
         self._widget.sigParameterChanged.connect(self.updateScanParDict)
 
-        # EtMonalisa
-        self._commChannel.sigRequestScanParameters.connect(self.sendScanParameters)
-        self._commChannel.sigRunScanTriggerScopePLSRMulticolor.connect(self.runScan)
-
-
-
-    def sendScanParameters(self):
+    ###????????????
+    def sendScanParameters(self): 
         triggerscopeParameters = self.getTriggerscopeParameters()
         self._commChannel.sigSendScanParameters.emit(triggerscopeParameters)
-
-
+    ###????????????
 
     def getNumScanPositions(self):
         """ Returns the number of scan positions for the configured scan. """
         _, positions, _ = self._master.triggerScopeManager.getScanSignalsDict(self._analogParameterDict)
         numPositions = functools.reduce(lambda x, y: x * y, positions)
         return numPositions
-
+    
     def saveScan(self):
         fileName = guitools.askForFilePath(self._widget, 'Save scan', self.scanDir, isSaving=True)
         if not fileName:
             return
 
         self.saveScanParamsToFile(fileName)
-
+    
     # @APIExport(runOnUIThread=True)
     def saveScanParamsToFile(self, filePath: str) -> None:
         """ Saves the set scanning parameters to the specified file. """
@@ -107,7 +110,7 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             return
 
         self.loadScanParamsFromFile(fileName)
-
+        
     # @APIExport(runOnUIThread=True)
     def loadScanParamsFromFile(self, filePath: str) -> None:
         """ Loads scanning parameters from the specified file. """
@@ -149,14 +152,12 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             self._widget.setCycleStartPosUm(self._scanParameterDict['cycleStartPosUm'])
             self._widget.setCycleStepSizeUm(self._scanParameterDict['cycleStepSizeUm'])
             self._widget.setCycleSteps(self._scanParameterDict['cycleSteps'])
-            self._widget.setLaser2OnMs(self._scanParameterDict['Laser2OnMs'])
-            self._widget.setDelayAfterLaser2Ms(self._scanParameterDict['DelayAfterLaser2Ms'])
-            self._widget.setMulticolorScanFirstUm(self._scanParameterDict['MulticolorScanFirstUm'])
-            self._widget.setMulticolorScanSecondUm(self._scanParameterDict['MulticolorScanSecondUm'])
-            self._widget.setMulticolorScanThirdUm(self._scanParameterDict['MulticolorScanThirdUm'])
-            self._widget.setLaser3OnMs(self._scanParameterDict['Laser3OnMs'])
-            self._widget.setDelayAfterLaser3Ms(self._scanParameterDict['DelayAfterLaser3Ms'])
-
+            self._widget.setRasterXStartPosUm(self._scanParameterDict['rasterXStartPosUm']) #ADDED
+            self._widget.setRasterXStepSizeUm(self._scanParameterDict['rasterXStepSizeUm']) #ADDED
+            self._widget.setRasterXSteps(self._scanParameterDict['rasterXSteps'])           #ADDED
+            self._widget.setRasterYStartPosUm(self._scanParameterDict['rasterYStartPosUm']) #ADDED
+            self._widget.setRasterYStepSizeUm(self._scanParameterDict['rasterYStepSizeUm']) #ADDED
+            self._widget.setRasterYSteps(self._scanParameterDict['rasterYSteps'])           #ADDED
 
             #Set devices
             self._widget.setOnLaser(self._deviceParameterDict['onLaser'])
@@ -165,13 +166,11 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             self._widget.setRoScanDevice(self._deviceParameterDict['roScanDevice'])
             self._widget.setCycleScanDevice(self._deviceParameterDict['cycleScanDevice'])
             self._widget.setCameraTTL(self._deviceParameterDict['CameraTTL'])
-            self._widget.setLaser2(self._deviceParameterDict['Laser2'])
-            self._widget.setLaser2(self._deviceParameterDict['Laser3'])
-            self._widget.setMulticolorScanDevice(self._deviceParameterDict['MulticolorScanDevice'])
+            self._widget.setRasterXScanDevice(self._deviceParameterDict['rasterXScanDevice'])       # ADDED
+            self._widget.setRasterYScanDevice(self._deviceParameterDict['rasterYScanDevice'])       # ADDED
 
         finally:
             self.settingParameters = False
-
 
     def getTriggerscopeParameters(self):
         self.getParameters()
@@ -179,7 +178,9 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
 
         scanParameterDict = {}
         roConvFactor = self.positioners[deviceParameterDict['roScanDevice']].managerProperties['conversionFactor']
-        cycleConvFactor = self.positioners[deviceParameterDict['cycleScanDevice']].managerProperties['conversionFactor']
+        rasterXConvFactor = self.positioners[deviceParameterDict['rasterXScanDevice']].managerProperties['conversionFactor']
+        rasterYConvFactor = self.positioners[deviceParameterDict['rasterYScanDevice']].managerProperties['conversionFactor']
+
         scanParameterDict['onPulseTimeUs'] = int(self._scanParameterDict['onTimeMs'] * 1000)
         scanParameterDict['offPulseTimeUs'] = int(self._scanParameterDict['offTimeMs'] * 1000)
         scanParameterDict['roPulseTimeUs'] = int(self._scanParameterDict['roTimeMs'] * 1000)
@@ -197,17 +198,20 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
         scanParameterDict['cycleStartV'] = self._scanParameterDict['cycleStartPosUm'] / roConvFactor
         scanParameterDict['cycleStepSizeV'] = self._scanParameterDict['cycleStepSizeUm'] / roConvFactor
         scanParameterDict['cycleSteps'] = int(self._scanParameterDict['cycleSteps'])
-        scanParameterDict['Laser2OnUs'] = int(self._scanParameterDict['Laser2OnMs'] * 1000)
-        scanParameterDict['DelayAfterLaser2Us'] = int(self._scanParameterDict['DelayAfterLaser2Ms'] * 1000)
-        scanParameterDict['MulticolorScanFirstV'] = self._scanParameterDict['MulticolorScanFirstUm'] / roConvFactor
-        scanParameterDict['MulticolorScanSecondV'] = self._scanParameterDict['MulticolorScanSecondUm'] / roConvFactor
-        scanParameterDict['Laser3OnUs'] = int(self._scanParameterDict['Laser3OnMs'] * 1000)
-        scanParameterDict['DelayAfterLaser3Us'] = int(self._scanParameterDict['DelayAfterLaser3Ms'] * 1000)
-        scanParameterDict['MulticolorScanThirdV'] = self._scanParameterDict['MulticolorScanThirdUm'] / roConvFactor
+        scanParameterDict['rasterXStartPosV'] = self._scanParameterDict['rasterXStartPosUm'] / rasterXConvFactor    # ADDED
+        scanParameterDict['rasterXStepSizeV'] = self._scanParameterDict['rasterXStepSizeUm'] / rasterXConvFactor    # ADDED
+        scanParameterDict['rasterXSteps'] = int(self._scanParameterDict['rasterXSteps'])                           # ADDED
+        scanParameterDict['rasterYStartPosV'] = self._scanParameterDict['rasterYStartPosUm'] / rasterYConvFactor    # ADDED
+        scanParameterDict['rasterYStepSizeV'] = self._scanParameterDict['rasterYStepSizeUm'] / rasterYConvFactor    # ADDED
+        scanParameterDict['rasterYSteps'] = int(self._scanParameterDict['rasterYSteps'])                           # ADDED
 
-        pLSRParameterDict = {'deviceParameters': deviceParameterDict, 'scanParameters': scanParameterDict}
+        LSXYRParameterDict = {'deviceParameters': deviceParameterDict, 'scanParameters': scanParameterDict}
 
-        return pLSRParameterDict
+        return LSXYRParameterDict
+    
+    # def changePosition(self, positionerName, newPos):
+    #     self._logger.debug('Setting positioner: ' + str(positionerName) + ' to ' + str(newPos))
+    #     #self._master.TriggerScopeManager.setPosition(newPos)
 
     def runScanExternal(self, recalculateSignals, isNonFinalPartOfSequence):
         self._widget.setRepeatEnabled(False)
@@ -231,7 +235,7 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             if not sigScanStartingEmitted:
                 self.emitScanSignal(self._commChannel.sigScanStarting)
             triggerscopeParameters = self.getTriggerscopeParameters()
-            self._master.triggerScopeManager.runScan(triggerscopeParameters, type='pLS-RESOLFT_multicolor_Scan')
+            self._master.triggerScopeManager.runScan(triggerscopeParameters, type='LSXYRScan')
 
         except Exception:
             self._logger.error(traceback.format_exc())
@@ -284,29 +288,28 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
         self._scanParameterDict['cycleStartPosUm'] = self._widget.getCycleStartPosUm()
         self._scanParameterDict['cycleStepSizeUm'] = self._widget.getCycleStepSizeUm()
         self._scanParameterDict['cycleSteps'] = self._widget.getCycleSteps()
-        self._scanParameterDict['Laser2OnMs'] = self._widget.getLaser2OnMs()
-        self._scanParameterDict['DelayAfterLaser2Ms'] = self._widget.getDelayAfterLaser2Ms()
-        self._scanParameterDict['MulticolorScanFirstUm'] = self._widget.getMulticolorScanFirstUm()
-        self._scanParameterDict['MulticolorScanSecondUm'] = self._widget.getMulticolorScanSecondUm()
-        self._scanParameterDict['Laser3OnMs'] = self._widget.getLaser3OnMs()
-        self._scanParameterDict['DelayAfterLaser3Ms'] = self._widget.getDelayAfterLaser3Ms()
-        self._scanParameterDict['MulticolorScanThirdUm'] = self._widget.getMulticolorScanThirdUm()
-
+        # Use the currently chosen raster X scan device to get the position
+        raster_x_device = self._widget.getRasterXScanDevice()
+        self._scanParameterDict['rasterXStartPosUm'] = self._widget.getRasterXStartPosUm()  # ADDED
+        self._scanParameterDict['rasterXStepSizeUm'] = self._widget.getRasterXStepSizeUm()  # ADDED
+        self._scanParameterDict['rasterXSteps'] = self._widget.getRasterXSteps()            # ADDED
+        self._scanParameterDict['rasterYStartPosUm'] = self._widget.getRasterYStartPosUm()  # ADDED
+        self._scanParameterDict['rasterYStepSizeUm'] = self._widget.getRasterYStepSizeUm()  # ADDED
+        self._scanParameterDict['rasterYSteps'] = self._widget.getRasterYSteps()            # ADDED
         #Get device parameters
         self._deviceParameterDict['onLaser'] = self._widget.getOnLaser()
         self._deviceParameterDict['offLaser'] = self._widget.getOffLaser()
         self._deviceParameterDict['roLaser'] = self._widget.getRoLaser()
         self._deviceParameterDict['roScanDevice'] = self._widget.getRoScanDevice()
         self._deviceParameterDict['cycleScanDevice'] = self._widget.getCycleScanDevice()
-        self._deviceParameterDict['Laser2'] = self._widget.getLaser2()
-        self._deviceParameterDict['Laser3'] = self._widget.getLaser3()
-        self._deviceParameterDict['MulticolorScanDevice'] = self._widget.getMulticolorScanDevice()
         self._deviceParameterDict['CameraTTL'] = self._widget.getCameraTTL()
+        self._deviceParameterDict['rasterXScanDevice'] = self._widget.getRasterXScanDevice()       # ADDED
+        self._deviceParameterDict['rasterYScanDevice'] = self._widget.getRasterYScanDevice()       # ADDED
 
     def emitScanSignal(self, signal, *args):
         signal.emit(*args)
 
-    # @APIExport(runOnUIThread=True)
+    @APIExport(runOnUIThread=True)
     def runScan(self) -> None:
         """ Runs a scan with the set scanning parameters. """
         self.runScanAdvanced(sigScanStartingEmitted=False)
@@ -319,7 +322,8 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             self._scanParameterDict[key[1]] = value
             self.setParameters()
         elif key[0] == _attrCategoryDevices:
-            self._scanParameterDict[key[1]] = value
+            # self._scanParameterDict[key[1]] = value
+            self._deviceParameterDict[key[1]] = value           #????
             self.setParameters()
 
     def setSharedAttr(self, category, attr, value):
@@ -341,8 +345,10 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
     def closeEvent(self):
         pass
 
-_attrCategoryScan = 'MS-RESOLFT_Scan'
-_attrCategoryDevices = 'MS-RESOLFT_Dev'
+_attrCategoryScan = 'LSXYR_Scan'
+_attrCategoryDevices = 'LSXYR_Dev'
+
+
 # Copyright (C) 2020-2021 ImSwitch developers
 # This file is part of ImSwitch.
 #

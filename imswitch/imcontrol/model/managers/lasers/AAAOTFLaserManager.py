@@ -1,4 +1,5 @@
 from .LaserManager import LaserManager
+from imswitch.imcommon.model import initLogger
 
 
 class AAAOTFLaserManager(LaserManager):
@@ -14,6 +15,7 @@ class AAAOTFLaserManager(LaserManager):
     """
 
     def __init__(self, laserInfo, name, **lowLevelManagers):
+        self.__logger = initLogger(self, instanceName=name)
         self._channel = int(laserInfo.managerProperties['channel'])
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
@@ -45,6 +47,29 @@ class AAAOTFLaserManager(LaserManager):
         """Switch on the blanking of all the channels"""
         cmd = 'L0' + 'I1' + 'O1'
         self._rs232manager.query(cmd)
+
+    def blankingExt(self):
+        """Switch the banking to external"""
+        cmd = 'L0' + 'I0'
+        self._rs232manager.query(cmd)
+
+    def setScanModeActive(self, active):
+        if active:
+            #powerQ = self._laser.power_sp * self._numLasers
+            #self._laser.enter_mod_mode()
+            #self._setModPower(powerQ)
+            self.blankingExt()
+
+            #self.internalControl()
+            self.__logger.debug('Entered digital modulation mode')
+
+        else:
+            #self._laser.digital_mod = False
+            #self._laser.query('cp')
+            self.blankingOn()
+            self.__logger.debug('Exited digital modulation mode')
+
+        #self._digitalMod = active
 
     def internalControl(self):
         """Switch the channel to external control"""

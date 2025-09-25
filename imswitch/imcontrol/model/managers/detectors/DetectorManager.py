@@ -248,6 +248,8 @@ class DetectorManager(SignalInterface):
         """ Stops image acquisition. """
         pass
 
+
+
     def finalize(self) -> None:
         """ Close/cleanup detector. """
         pass

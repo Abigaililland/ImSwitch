@@ -98,6 +98,25 @@ class BeadWorker(Worker):
                     img = img[y0:y1, x0:x1]
                     mean = np.mean(img)
                     self.__controller.recIm[i] = mean
+
+                    # ADDED FOR TESTING
+                    # save the image to an array
+                    if i == 0:
+                        self.__controller.beadImages = np.zeros((N, img.shape[0], img.shape[1]))
+                    self.__controller.beadImages[i] = img
+                    # save the array to a file when all N images are acquired
+                    #if i == 143:
+                    #    np.save('C:/Users/Snouty/Desktop/beadImages' + str(i) + '.npy', self.__controller.beadImages)
+                    #if i == 224:
+                    #    np.save('C:/Users/Snouty/Desktop/beadImages' + str(i) + '.npy', self.__controller.beadImages)
+                    #if i == 399:
+                    #    np.save('C:/Users/Snouty/Desktop/beadImages' + str(i) + '.npy', self.__controller.beadImages)
+                    #if i == 3540:
+                    #    np.save('C:/Users/Snouty/Desktop/beadImages' + str(i) + '.npy', self.__controller.beadImages)
+                    if i == dims[0] * dims[1] - 1:
+                        np.save('C:/Users/Snouty/Desktop/beadImages' + str(i) + '.npy', self.__controller.beadImages)
+                    # ADDED FOR TESTING - END
+
                     i = i + 1
                     if i == N:
                         i = 0

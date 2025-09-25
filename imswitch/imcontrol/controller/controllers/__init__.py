@@ -22,3 +22,5 @@ from .LightSheetMulticolorController import LightSheetMulticolorController
 from .BSC203Controller import BSC203Controller
 from .SetupStatusController import SetupStatusController
 from .TriggerScopePLSRMulticolorController import TriggerScopePLSRMulticolorController
+from .EtSnoutyController import EtSnoutyController
+from .TriggerScopeLSXYRController import TriggerScopeLSXYRController

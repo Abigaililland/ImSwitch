@@ -68,7 +68,9 @@ class ImConMainView(QtWidgets.QMainWindow):
             'ULenses': _DockInfo(name='uLenses Tool', yPosition=3),
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'SetupStatus': _DockInfo(name='SetupStatus', yPosition=3),
-            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3)
+            'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
+            'EtSnouty': _DockInfo(name='EtSnouty', yPosition=0),
+            'TriggerScopeLSXYR': _DockInfo(name='TriggerScopeLSXYR', yPosition=1)
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),

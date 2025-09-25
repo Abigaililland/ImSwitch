@@ -15,6 +15,8 @@ class CameraTIS:
         self.model = cam_names[cameraNo]
         self.cam = ic_ic.get_device(cam_names[cameraNo])
 
+
+
         self.cam.open()
         self.cam.set_video_format('Y800 (2448x2048)')  # set video format
         self.cam.enable_continuous_mode(True)  # image in continuous mode
@@ -85,11 +87,11 @@ class CameraTIS:
     def getPropertyValue(self, property_name):
         # Check if the property exists.
         if property_name == "gain":
-            property_value = self.cam.gain.value
+            property_value = self.cam.gain
         elif property_name == "brightness":
-            property_value = self.cam.brightness.value
+            property_value = self.cam.brightness
         elif property_name == "exposure":
-            property_value = self.cam.exposure.values
+            property_value = self.cam.exposure
         elif property_name == "image_width":
             property_value = self.shape[0]
         elif property_name == "image_height":

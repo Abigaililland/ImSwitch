@@ -12,6 +12,7 @@ class CommunicationChannel(SignalInterface):
     and Widgets, or between Widgets.
     """
 
+
     sigKeyPressed = Signal(object)
 
     sigKeyReleased = Signal(object)
@@ -71,6 +72,18 @@ class CommunicationChannel(SignalInterface):
     sigScanEnded = Signal()
 
     sigSLMMaskUpdated = Signal(object)  # (mask)
+
+    # EtMonalisa
+    sigInitiateEtSnouty = Signal(bool)
+    sigRequestScanParameters = Signal()
+    sigSendScanParameters = Signal(dict)
+    sigSetConfig = Signal(str)
+    sigToggleBlockScanWidget=Signal(bool) #connected to nothing, can be used to block the Scan Widget
+    sigSnapImg=Signal() #connected to nothing, can be used to record ?
+    sigClockWidefield = Signal()
+    sigsetFlipMirrorPositions = Signal(list)
+    sigRunScanTriggerScopePLSRMulticolor = Signal()
+    sigSetLaserValue=Signal(str,int)
 
     @property
     def sharedAttrs(self):

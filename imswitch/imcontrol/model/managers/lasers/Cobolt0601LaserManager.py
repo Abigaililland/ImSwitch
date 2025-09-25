@@ -32,9 +32,22 @@ class Cobolt0601LaserManager(LantzLaserManager):
     def setValue(self, power):
         power = int(power)
         if self._digitalMod:
+            # if power == 0:
+            #     self._laser.query('ci')
+            #     self._laser.query('slc 10')
+            # else :
             self._setModPower(power * Q_(1, 'mW'))
+            self.__logger.debug(f'Test test')
         else:
-            self._setBasicPower(power * Q_(1, 'mW'))
+            if power ==0:
+                self._setBasicPower(power * Q_(1, 'mW'))
+                self._laser.query('ci')
+                self._laser.query('slc 10')
+                self.__logger.debug(f'Test power 0')
+            else:
+                self._laser.query('cp')
+                self._setBasicPower(power * Q_(1, 'mW'))
+                self.__logger.debug(f'Test power pas 0')
 
     def setScanModeActive(self, active):
         if active:
@@ -43,10 +56,18 @@ class Cobolt0601LaserManager(LantzLaserManager):
             self._setModPower(powerQ)
             self.__logger.debug('Entered digital modulation mode')
             self.__logger.debug(f'Modulation mode is: {self._laser.mod_mode}')
+            self.__logger.debug(f'Modulation power set to {self._laser.power_sp}')
         else:
-            self._laser.digital_mod = False
-            self._laser.query('cp')
-            self.__logger.debug('Exited digital modulation mode')
+            if self._laser.power_sp * Q_(1, 'mW') ==0:
+                self._laser.digital_mod = False
+                self._laser.query('ci')
+                self._laser.query('slc 10')
+                self.__logger.debug('Exited digital modulation mode')
+            else :
+                self._laser.digital_mod = False
+                self._laser.query('cp')
+                self.__logger.debug('Exited digital modulation mode')
+                self.__logger.debug(f'Valeur de power 2?{self._laser.power_sp})')
 
         self._digitalMod = active
 

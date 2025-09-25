@@ -1,18 +1,17 @@
 import pyqtgraph as pg
 from qtpy import QtCore, QtWidgets
 
-from imswitch.imcontrol.view import guitools
+from imswitch.imcontrol.view import guitools as guitools
 from .basewidgets import Widget
 
-
-class TriggerScopePLSRWidget(Widget):
-    """ Widget containing scanner interface and beadscan reconstruction.
-            This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
+class TriggerScopeLSXYRWidget(Widget):
+    """ Widget for displaying the TriggerScopeLSXYRController. """
 
     sigSaveScanClicked = QtCore.Signal()
     sigLoadScanClicked = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
     sigParameterChanged = QtCore.Signal()
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -26,7 +25,7 @@ class TriggerScopePLSRWidget(Widget):
         self.digModWarning.setInformativeText(
             "You need to be in digital laser modulation and external "
             "frame-trigger acquisition mode")
-        self.scannerLabel = QtWidgets.QLabel('pLS-RESOLFT scanner')
+        self.scannerLabel = QtWidgets.QLabel('LS-XY-RESOLFT scanner')
         self.scannerLabel.setStyleSheet('font-size: 14pt; font-weight: bold')
 
         self.saveScanBtn = guitools.BetterPushButton('Save Scan')
@@ -98,6 +97,7 @@ class TriggerScopePLSRWidget(Widget):
 
         roTimeLabel = QtWidgets.QLabel('RO-pulse time (ms)')
         self.roTimeEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.roTimeEdit.setMaximum(1000)
         self.roTimeEdit.editingFinished.connect(self.sigParameterChanged)
 
         delayAfterRoLabel = QtWidgets.QLabel('Delay after RO-pulse (ms)')
@@ -145,6 +145,46 @@ class TriggerScopePLSRWidget(Widget):
         self.cycleStepsEdit.setMaximum(1000)
         self.cycleStepsEdit.editingFinished.connect(self.sigParameterChanged)
 
+        # START ADDED
+        rasterXStartPosUmLabel = QtWidgets.QLabel('Raster X scan start (um)')
+        self.rasterXStartPosUmEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.rasterXStartPosUmEdit.setMinimum(0)
+        self.rasterXStartPosUmEdit.setMaximum(10)
+        self.rasterXStartPosUmEdit.setDecimals(3)
+        self.rasterXStartPosUmEdit.editingFinished.connect(self.sigParameterChanged)
+
+        rasterYStartPosUmLabel = QtWidgets.QLabel('Raster Y scan start (um)')
+        self.rasterYStartPosUmEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.rasterYStartPosUmEdit.setMinimum(0)
+        self.rasterYStartPosUmEdit.setMaximum(10)
+        self.rasterYStartPosUmEdit.setDecimals(3)
+        self.rasterYStartPosUmEdit.editingFinished.connect(self.sigParameterChanged)
+
+        rasterXStepSizeUmLabel = QtWidgets.QLabel('Raster X scan step size (um)')
+        self.rasterXStepSizeUmEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.rasterXStepSizeUmEdit.setMinimum(0)
+        self.rasterXStepSizeUmEdit.setMaximum(10)
+        self.rasterXStepSizeUmEdit.setDecimals(3)
+        self.rasterXStepSizeUmEdit.editingFinished.connect(self.sigParameterChanged)
+
+        rasterXStepsLabel = QtWidgets.QLabel('Raster X scan steps')
+        self.rasterXStepsEdit = guitools.BetterSpinBox(allowScrollChanges=False)
+        self.rasterXStepsEdit.setMaximum(1000)
+        self.rasterXStepsEdit.editingFinished.connect(self.sigParameterChanged)
+
+        rasterYStepSizeUmLabel = QtWidgets.QLabel('Raster Y scan step size (um)')
+        self.rasterYStepSizeUmEdit = guitools.BetterDoubleSpinBox(allowScrollChanges=False)
+        self.rasterYStepSizeUmEdit.setMinimum(0)
+        self.rasterYStepSizeUmEdit.setMaximum(10)
+        self.rasterYStepSizeUmEdit.setDecimals(3)
+        self.rasterYStepSizeUmEdit.editingFinished.connect(self.sigParameterChanged)
+
+        rasterYStepsLabel = QtWidgets.QLabel('Raster Y scan steps')
+        self.rasterYStepsEdit = guitools.BetterSpinBox(allowScrollChanges=False)
+        self.rasterYStepsEdit.setMaximum(1000)
+        self.rasterYStepsEdit.editingFinished.connect(self.sigParameterChanged)
+        # END ADDED
+
         onLaserLabel = QtWidgets.QLabel('On laser')
         self.onLaserEdit = guitools.BetterComboBox(allowScrollChanges=False)
 
@@ -159,6 +199,18 @@ class TriggerScopePLSRWidget(Widget):
 
         cycleScanDeviceLabel = QtWidgets.QLabel('Cycle scan device is now hard coded same as RO-device')
         self.cycleScanDeviceEdit = guitools.BetterComboBox(allowScrollChanges=False)
+
+        # START ADDED
+        rasterXScanDeviceLabel = QtWidgets.QLabel('Raster X scan device')
+        self.rasterXScanDeviceEdit = guitools.BetterComboBox(allowScrollChanges=False)
+
+        rasterYScanDeviceLabel = QtWidgets.QLabel('Raster Y scan device')
+        self.rasterYScanDeviceEdit = guitools.BetterComboBox(allowScrollChanges=False)
+        # END ADDED
+
+
+        CameraTTLLabel = QtWidgets.QLabel('Camera used for detection')
+        self.CameraTTLEdit = guitools.BetterComboBox(allowScrollChanges=False)
 
         # Temp fix
         self.cycleScanDeviceEdit.setEnabled(False)
@@ -230,22 +282,38 @@ class TriggerScopePLSRWidget(Widget):
         currentRow += 1
         self.grid.addWidget(delayAfterOffLabel, currentRow, 0)
         self.grid.addWidget(self.delayAfterOffEdit, currentRow, 1)
-        self.grid.addWidget(cycleStartPosUmLabel, currentRow, 2)
-        self.grid.addWidget(self.cycleStartPosUmEdit, currentRow, 3)
+        self.grid.addWidget(roTimeLabel, currentRow, 2)
+        self.grid.addWidget(self.roTimeEdit, currentRow, 3)
         currentRow += 1
         self.grid.addWidget(delayAfterDACStepLabel, currentRow, 0)
         self.grid.addWidget(self.delayAfterDACStepEdit, currentRow, 1)
+        self.grid.addWidget(delayAfterRoLabel, currentRow, 2)
+        self.grid.addWidget(self.delayAfterRoEdit, currentRow, 3)
+        currentRow += 1
+        self.grid.addWidget(cycleStartPosUmLabel, currentRow, 0)
+        self.grid.addWidget(self.cycleStartPosUmEdit, currentRow, 1)
         self.grid.addWidget(cycleStepSizeUmLabel, currentRow, 2)
         self.grid.addWidget(self.cycleStepSizeUmEdit, currentRow, 3)
         currentRow += 1
-        self.grid.addWidget(roTimeLabel, currentRow, 0)
-        self.grid.addWidget(self.roTimeEdit, currentRow, 1)
-        self.grid.addWidget(cycleStepsLabel, currentRow, 2)
-        self.grid.addWidget(self.cycleStepsEdit, currentRow, 3)
+        self.grid.addWidget(cycleStepsLabel, currentRow, 0)
+        self.grid.addWidget(self.cycleStepsEdit, currentRow, 1)
         currentRow += 1
-        self.grid.addWidget(delayAfterRoLabel, currentRow, 0)
-        self.grid.addWidget(self.delayAfterRoEdit, currentRow, 1)
+        self.grid.addWidget(rasterXStartPosUmLabel, currentRow, 0)
+        self.grid.addWidget(self.rasterXStartPosUmEdit, currentRow, 1)
+        self.grid.addWidget(rasterYStartPosUmLabel, currentRow, 2)
+        self.grid.addWidget(self.rasterYStartPosUmEdit, currentRow, 3)
         currentRow += 1
+        self.grid.addWidget(rasterXStepSizeUmLabel, currentRow, 0)
+        self.grid.addWidget(self.rasterXStepSizeUmEdit, currentRow, 1)
+        self.grid.addWidget(rasterYStepSizeUmLabel, currentRow, 2)
+        self.grid.addWidget(self.rasterYStepSizeUmEdit, currentRow, 3)
+        currentRow += 1
+        self.grid.addWidget(rasterXStepsLabel, currentRow, 0)
+        self.grid.addWidget(self.rasterXStepsEdit, currentRow, 1)
+        self.grid.addWidget(rasterYStepsLabel, currentRow, 2)
+        self.grid.addWidget(self.rasterYStepsEdit, currentRow, 3)
+        currentRow += 1
+
         self.grid.addItem(
             QtWidgets.QSpacerItem(40, 20,
                                   QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
@@ -258,12 +326,19 @@ class TriggerScopePLSRWidget(Widget):
         currentRow += 1
         self.grid.addWidget(offLaserLabel, currentRow, 0)
         self.grid.addWidget(self.offLaserEdit, currentRow, 1)
+        self.grid.addWidget(roLaserLabel, currentRow, 2)
+        self.grid.addWidget(self.roLaserEdit, currentRow, 3)
+        currentRow += 1
+        self.grid.addWidget(rasterXScanDeviceLabel, currentRow, 0)
+        self.grid.addWidget(self.rasterXScanDeviceEdit, currentRow, 1)
+        self.grid.addWidget(rasterYScanDeviceLabel, currentRow, 2)
+        self.grid.addWidget(self.rasterYScanDeviceEdit, currentRow, 3)
+        currentRow += 1
+        self.grid.addWidget(CameraTTLLabel, currentRow, 0)
+        self.grid.addWidget(self.CameraTTLEdit, currentRow, 1)
         self.grid.addWidget(cycleScanDeviceLabel, currentRow, 2)
         self.grid.addWidget(self.cycleScanDeviceEdit, currentRow, 3)
-        currentRow += 1
-        self.grid.addWidget(roLaserLabel, currentRow, 0)
-        self.grid.addWidget(self.roLaserEdit, currentRow, 1)
-
+        
         # Connect signals
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
         self.loadScanBtn.clicked.connect(self.sigLoadScanClicked)
@@ -323,10 +398,13 @@ class TriggerScopePLSRWidget(Widget):
 
     def setRoTimeMs(self, value):
         self.roTimeEdit.setValue(value)
+    
     def getDelayAfterRoMs(self):
         return self.delayAfterRoEdit.value()
+   
     def setDelayAfterRoMs(self, value):
         self.delayAfterRoEdit.setValue(value)
+    
     def getRoRestingPosUm(self):
         return self.roRestingPosUmEdit.value()
 
@@ -369,6 +447,42 @@ class TriggerScopePLSRWidget(Widget):
     def setCycleSteps(self, value):
         self.cycleStepsEdit.setValue(value)
 
+    def getRasterXStartPosUm(self):
+        return self.rasterXStartPosUmEdit.value()
+
+    def setRasterXStartPosUm(self, value):
+        self.rasterXStartPosUmEdit.setValue(value)
+
+    def getRasterYStartPosUm(self):
+        return self.rasterYStartPosUmEdit.value()
+
+    def setRasterYStartPosUm(self, value):
+        self.rasterYStartPosUmEdit.setValue(value)
+
+    def getRasterXStepSizeUm(self):
+        return self.rasterXStepSizeUmEdit.value()
+
+    def setRasterXStepSizeUm(self, value):
+        self.rasterXStepSizeUmEdit.setValue(value)
+
+    def getRasterXSteps(self):
+        return self.rasterXStepsEdit.value()
+
+    def setRasterXSteps(self, value):
+        self.rasterXStepsEdit.setValue(value)
+
+    def getRasterYStepSizeUm(self):
+        return self.rasterYStepSizeUmEdit.value()
+
+    def setRasterYStepSizeUm(self, value):
+        self.rasterYStepSizeUmEdit.setValue(value)
+
+    def getRasterYSteps(self):
+        return self.rasterYStepsEdit.value()
+
+    def setRasterYSteps(self, value):
+        self.rasterYStepsEdit.setValue(value)
+
     def getOnLaser(self):
         return self.onLaserEdit.currentText()
 
@@ -404,22 +518,31 @@ class TriggerScopePLSRWidget(Widget):
         ind = self.cycleScanDeviceEdit.findText(value)
         self.cycleScanDeviceEdit.setCurrentIndex(ind)
 
+    def getCameraTTL(self):
+        return self.CameraTTLEdit.currentText()
+
+    def setCameraTTL(self, value):
+        ind = self.CameraTTLEdit.findText(value)
+        self.CameraTTLEdit.setCurrentIndex(ind)
+
+    def getRasterXScanDevice(self):
+        return self.rasterXScanDeviceEdit.currentText()
+    
+    def setRasterXScanDevice(self, value):
+        ind = self.rasterXScanDeviceEdit.findText(value)
+        self.rasterXScanDeviceEdit.setCurrentIndex(ind)
+
+    def getRasterYScanDevice(self):
+        return self.rasterYScanDeviceEdit.currentText() 
+    
+    def setRasterYScanDevice(self, value):
+        ind = self.rasterYScanDeviceEdit.findText(value)
+        self.rasterYScanDeviceEdit.setCurrentIndex(ind)
+
     def setScanButtonChecked(self, checked):
         self.scanButton.setEnabled(not checked)
         self.scanButton.setCheckable(checked)
         self.scanButton.setChecked(checked)
-
-
-
-    def plotSignalGraph(self, areas, signals, colors):
-        if len(areas) != len(signals) or len(signals) != len(colors):
-            raise ValueError('Arguments "areas", "signals" and "colors" must be of equal length')
-
-        self.graph.plot.clear()
-        for i in range(len(areas)):
-            self.graph.plot.plot(areas[i], signals[i], pen=pg.mkPen(colors[i]))
-
-        self.graph.plot.setYRange(-0.1, 1.1)
 
     def eventFilter(self, source, event):
         if source is self.gridContainer and event.type() == QtCore.QEvent.Resize:
@@ -433,12 +556,8 @@ class TriggerScopePLSRWidget(Widget):
         return False
 
 
-class GraphFrame(pg.GraphicsLayoutWidget):
-    """Creates the plot that plots the preview of the pulses."""
+    
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.plot = self.addPlot(row=1, col=0)
 
 
 # Copyright (C) 2020-2021 ImSwitch developers

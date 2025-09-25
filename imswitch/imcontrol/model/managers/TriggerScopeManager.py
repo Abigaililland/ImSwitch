@@ -89,6 +89,8 @@ class TriggerScopeManager(SignalInterface):
             self.runMulticolorScan(parameterDict)
         elif type == 'pLS-RESOLFT_multicolor_Scan':
             self.runpLSRESOLFTMulticolorScan(parameterDict)
+        elif type == 'LSXYRScan':
+            self.runLSXYRScan(parameterDict)
         else:
             self.__logger.info('Unknown scan type')
 
@@ -122,6 +124,7 @@ class TriggerScopeManager(SignalInterface):
         offLaserTTLLine = self._deviceInfo[deviceParameters['offLaser']]['TTLLine']
         roLaserTTLLine = self._deviceInfo[deviceParameters['roLaser']]['TTLLine']
         Laser2TTLLine = self._deviceInfo[deviceParameters['Laser2']]['TTLLine']
+        Laser3TTLLine = self._deviceInfo[deviceParameters['Laser3']]['TTLLine']
         CameraTTLLine = self._deviceInfo[deviceParameters['CameraTTL']]['TTLLine']
         roScanDACChan = self._deviceInfo[deviceParameters['roScanDevice']]['DACChannel']
         cycleScanDACChan = self._deviceInfo[deviceParameters['cycleScanDevice']]['DACChannel']
@@ -131,6 +134,7 @@ class TriggerScopeManager(SignalInterface):
         self.setParameter('offLaserTTLChan', offLaserTTLLine)
         self.setParameter('roLaserTTLChan', roLaserTTLLine)
         self.setParameter('Laser2TTLChan', Laser2TTLLine)
+        self.setParameter('Laser3TTLChan', Laser3TTLLine)
         self.setParameter('CameraTTLChan', CameraTTLLine)
         self.setParameter('roScanDACChan', roScanDACChan)
         self.setParameter('cycleScanDACChan', cycleScanDACChan)
@@ -261,6 +265,43 @@ class TriggerScopeManager(SignalInterface):
         self.send('RASTER_SCAN')
 
         self.sigScanStarted.emit()
+
+        ### RUN XY RESOLFT SCAN
+
+    def runLSXYRScan(self, LSXYRScanParameters):
+        # seqTime = rasterScanParameters['Digital']['sequence_time']
+        # self.setParameter('sequenceTimeUs', int(seqTime * 1e6))
+
+        deviceParameters = LSXYRScanParameters['deviceParameters']
+
+        onLaserTTLLine = self._deviceInfo[deviceParameters['onLaser']]['TTLLine']
+        offLaserTTLLine = self._deviceInfo[deviceParameters['offLaser']]['TTLLine']
+        roLaserTTLLine = self._deviceInfo[deviceParameters['roLaser']]['TTLLine']
+        CameraTTLLine = self._deviceInfo[deviceParameters['CameraTTL']]['TTLLine']
+        roScanDACChan = self._deviceInfo[deviceParameters['roScanDevice']]['DACChannel']
+        cycleScanDACChan = self._deviceInfo[deviceParameters['cycleScanDevice']]['DACChannel']
+        rasterXScanDACChan = self._deviceInfo[deviceParameters['rasterXScanDevice']]['DACChannel']
+        rasterYScanDACChan = self._deviceInfo[deviceParameters['rasterYScanDevice']]['DACChannel']
+
+        self.setParameter('onLaserTTLChan', onLaserTTLLine)
+        self.setParameter('offLaserTTLChan', offLaserTTLLine)
+        self.setParameter('roLaserTTLChan', roLaserTTLLine)
+        self.setParameter('CameraTTLChan', CameraTTLLine)
+        self.setParameter('roScanDACChan', roScanDACChan)
+        self.setParameter('cycleScanDACChan', cycleScanDACChan)
+        self.setParameter('rasterXScanDACChan', rasterXScanDACChan)
+        self.setParameter('rasterYScanDACChan', rasterYScanDACChan)
+
+        scanParameters = LSXYRScanParameters['scanParameters']
+
+        for key, value in scanParameters.items():
+            self.setParameter(key, value)
+
+        self.__logger.debug('Parameters set')
+        self.send('LS-XY-RESOLFT_SCAN')
+        self.sigScanStarted.emit()
+
+        self.__logger.debug(scanParameters, deviceParameters)
 
     def sendAnalog(self, dacLine, value):
         self.send("DAC" + str(dacLine) + "," + str(((value+5)/10)*65535), 0)

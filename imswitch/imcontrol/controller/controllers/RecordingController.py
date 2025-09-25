@@ -326,6 +326,10 @@ class RecordingController(ImConWidgetController):
         self.snap()
 
     @APIExport(runOnUIThread=True)
+    def setSnapModeSave(self,mode="tiff") -> None:
+        self._widget.saveSnapFormatList.setCurrentText(mode)
+
+    @APIExport(runOnUIThread=True)
     def startRecording(self) -> None:
         """ Starts recording with the set settings to the set file path. """
         self._widget.setRecButtonChecked(True)
