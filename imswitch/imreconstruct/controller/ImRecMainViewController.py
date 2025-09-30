@@ -52,6 +52,7 @@ class ImRecMainViewController(ImRecWidgetController):
         self._widget.parTree.p.param('Acquisition parameters').sigTreeStateChanged.connect(self.acquisitionParsChanged)
 
         self._widget.sigReconstuctCurrent.connect(self.reconstructCurrent)
+        self._widget.sigReconstuctMulti.connect(self.reconstructMultiColor)
         self._widget.sigReconstructMultiConsolidated.connect(
             lambda: self.reconstructMulti(consolidate=True)
         )
@@ -114,7 +115,7 @@ class ImRecMainViewController(ImRecWidgetController):
             name = os.path.split(dataPath)[1]
             if self._currentDataObj is not None:
                 self._currentDataObj.checkAndUnloadData()
-            self._currentDataObj = DataObj(name, datasetToLoad, path=dataPath)
+            self._currentDataObj = DataObj(name, None, path=dataPath)
             self._currentDataObj.checkAndLoadData()
             if self._currentDataObj.dataLoaded:
                 self._commChannel.sigCurrentDataChanged.emit(self._currentDataObj)
@@ -148,10 +149,155 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.reconstruct([self._currentDataObj], consolidate=False)
 
+    def crop_and_rotate(self):
+
+        import h5py
+        import numpy as np
+        from numpy.linalg import lstsq
+        import scipy.ndimage
+        import re
+        from scipy.ndimage import rotate
+        from scipy.ndimage import affine_transform
+        from skimage.transform import AffineTransform, warp
+
+        path = 'D:/Data/2025-05-20/'
+        typef = '.hdf5'
+
+        ROI_file = 'ROI.txt'
+
+        Transform = 'Transform.txt'
+
+        ROI_params = np.loadtxt(path + ROI_file, dtype=int)
+
+        Transform_file = np.loadtxt(path + Transform, dtype=float)
+
+        if self._currentDataObj is None:
+            return
+
+        datapath = self._currentDataObj.dataPath
+
+        with h5py.File(datapath, 'r') as datafile:
+            print(datafile['Orca'].shape)
+            data = np.array(datafile['Orca'][:])
+        print(np.shape(data))
+
+        with h5py.File(path + '1tp' + typef, 'w') as hdf:
+
+            hdf.create_dataset('Orca', data=data[:, :, :])
+
+
+        with h5py.File(datapath + 'crop_orange' + typef, 'w') as fw:
+            # data_top = data[: ,63:275,43:1325]
+            # fw.create_dataset('Top',data = data_top)
+            # data_bot = data[:,472:684,35:1317]
+            # fw.create_dataset('Bot', data=data_bot)
+            data_orange = data[:, ROI_params[0][0]:ROI_params[0][1], ROI_params[1][0]:ROI_params[1][1]]
+            # fw.create_dataset('Orca', data=data_red)
+            data_green = data[:, ROI_params[2][0]:ROI_params[2][1], ROI_params[3][0]:ROI_params[3][1]]
+            fw.create_dataset('Orca', data=data_orange)
+            data_red = data[:, ROI_params[4][0]:ROI_params[4][1], ROI_params[5][0]:ROI_params[5][1]]
+        n_stack = np.shape(data_red)[0]
+        transformed_data_red = np.zeros(np.shape(data_red), dtype=np.int16)
+        transformed_data_green = np.zeros(np.shape(data_green), dtype=np.int16)
+        # with h5py.File(path+name + 'cropRed' + typef, 'w') as hdf:
+
+        # hdf.create_dataset('Orca', data=data_red)
+
+        # with h5py.File(path+name + 'cropGreen' + typef, 'w') as hdf:
+
+        # hdf.create_dataset('Orca', data=data_green)
+
+        # = AffineTransform(
+        #    matrix=np.array([[Transform_file[0][0], Transform_file[0][1],Transform_file[0][2] ],[Transform_file[1][0], Transform_file[1][1],Transform_file[1][2]],[0,0,1]])
+        #
+        affine_matrix_green = np.array(
+            [[Transform_file[0][0], Transform_file[0][1]], [Transform_file[1][0], Transform_file[1][1]]])
+        affine_matrix_red = np.array(
+            [[Transform_file[2][0], Transform_file[2][1]], [Transform_file[3][0], Transform_file[3][1]]])
+        #
+        #
+        offset_green = np.array([Transform_file[1][2], Transform_file[0][2]])
+        offset_red = np.array([Transform_file[3][2], Transform_file[2][2]])
+        #
+        # # scipy.ndimage.affine_transform needs the *inverse* of the matrix
+        matrix_inv_green = np.linalg.inv(affine_matrix_green.T)
+        matrix_inv_red = np.linalg.inv(affine_matrix_red.T)
+        #
+        # # The correct offset must map output coords through the inverse:
+        offset_for_scipy_green = -matrix_inv_green @ offset_green
+        offset_for_scipy_red = -matrix_inv_red @ offset_red
+
+        #
+        # Apply the affine transform to align img2 to img1
+
+        for i in range(n_stack):
+            # transformed_data_green[i] = warp(data_green[i], inverse_map=affine_matrix_green.inverse)
+            transformed_data_green[i] = affine_transform(data_green[i], matrix_inv_green, offset=offset_for_scipy_green,
+                                                         order=1)
+        for i in range(n_stack):
+            transformed_data_red[i] = affine_transform(data_red[i], matrix_inv_red, output_shape=data_orange[i].shape,
+                                                       offset=offset_for_scipy_red, order=1)
+
+        with h5py.File(datapath + 'crop_red' + typef, 'w') as hdf:
+
+            hdf.create_dataset('Orca', data=transformed_data_red)
+
+        with h5py.File(datapath + 'crop_green' + typef, 'w') as hdf:
+
+            hdf.create_dataset('Orca', data=transformed_data_green)
+
+    def quickLoadDatafromFile(self, dataPath):
+
+            self._logger.debug(f'Loading data at: {dataPath}')
+
+            datasetsInFile = DataObj.getDatasetNames(dataPath)
+            datasetToLoad = None
+            if len(datasetsInFile) < 1:
+                # File does not contain any datasets
+                return
+            elif len(datasetsInFile) > 1:
+                # File contains multiple datasets
+                self.pickDatasetsController.setDatasets(dataPath, datasetsInFile)
+                if not self._widget.showPickDatasetsDialog(blocking=True):
+                    return
+
+                datasetsSelected = self.pickDatasetsController.getSelectedDatasets()
+                if len(datasetsSelected) < 1:
+                    # No datasets selected
+                    return
+                elif len(datasetsSelected) == 1:
+                    datasetToLoad = datasetsSelected[0]
+                else:
+                    # Load into multi-data list
+                    for datasetName in datasetsSelected:
+                        self._commChannel.sigAddToMultiData.emit(dataPath, datasetName)
+                    self._widget.raiseMultiDataDock()
+                    return
+
+            name = os.path.split(dataPath)[1]
+            dataobj = DataObj(name, None, path=dataPath)
+            dataobj.checkAndLoadData()
+            if dataobj.dataLoaded:
+                self._logger.debug('Data from file loaded')
+                return dataobj
+            else:
+                pass
+    def reconstructMultiColor(self):
+        path = 'D:/Data/2025-05-20/'
+        typef = '.hdf5'
+        datapath = self._currentDataObj.dataPath
+
+        self.crop_and_rotate()
+
+
+        data = [self.quickLoadDatafromFile(datapath + 'crop_green' + typef),self.quickLoadDatafromFile(datapath + 'crop_red' + typef),self.quickLoadDatafromFile(datapath + 'crop_orange' + typef)]
+
+        self.reconstruct(data, consolidate=False)
+
     def reconstructMulti(self, consolidate):
         self.reconstruct(self._widget.getMultiDatas(), consolidate)
 
-    def reconstruct(self, dataObjs, consolidate):
+    def reconstruct(self, dataObjs, consolidate, get_Item=False):
         #consolidate not fully implemented now
         reconObj = None
         for index, dataObj in enumerate(dataObjs):
@@ -210,6 +356,91 @@ class ImRecMainViewController(ImRecWidgetController):
                 if not preloaded:
                     dataObj.checkAndUnloadData()
 
+            if not consolidate:
+                if get_Item :
+                    item=self._widget.addNewReconstruction(reconObj, reconObj.name, get_Item=True)
+                    return item
+                else:
+                    item = self._widget.addNewReconstruction(reconObj, reconObj.name)
+
+
+        if consolidate:
+            self._widget.addNewReconstruction(reconObj, f'{reconObj.name}_multi')
+
+    def reconstruct_multicolor(self, dataObjs, consolidate):
+        #consolidate not fully implemented now
+        reconObj = None
+        for index, dataObj in enumerate(dataObjs):
+            preloaded = dataObj.dataLoaded
+            try:
+                dataObj.checkAndLoadData()
+
+                if not consolidate or index == 0:
+                    reconObj = ReconObj(dataObj.name,
+                                        self._widget.timepoints_text)
+
+                data = dataObj.data
+                if self._widget.getBleachCorrectionBool():
+                    data = self.bleachingCorrection(data)
+
+
+                timepoints = self._widget.getTimepoints()
+                if timepoints > 1 and self._widget.getAverageTimepointsBool():
+                    shape = data.shape
+                    reshaped = np.reshape(data, (timepoints, shape[0]//timepoints, shape[1], shape[2]))
+                    data = np.mean(reshaped, axis=0)
+                    timepoints = 1
+
+                split_data = np.split(data, 3,axis =0)
+                split_objs = []
+                for i, part in enumerate(split_data):
+                    split_obj = DataObj(f"{dataObj.name}_split{i + 1}", dataObj.dataset, path=dataObj.path)
+                    split_obj.data = part
+                    split_obj.dataLoaded = True
+                    split_objs.append(split_obj)
+
+                colors = ['green', 'orange', 'red']
+                for split_obj, color in zip(data, colors):
+                    reconObj = ReconObj(split_obj.name, self._widget.timepoints_text)
+                    split_part = split_obj.data
+
+                    cycles = self._widget.getCycles()
+                    planes_in_cycle = self._widget.getPlanesInCycle()
+                    dataShape_tp = np.array([cycles*planes_in_cycle, data.shape[1], data.shape[2]])
+                    reconstructionSize = self._reconstructor.getReconstructionSize(dataShape_tp, self._widget.getPixelSizeNm(),
+                                                                             self._widget.getSkewAngleRad(),
+                                                                             self._widget.getDeltaY(),
+                                                                             self._widget.getReconstructionVxSize())
+
+                    reconObj.allocateReconstruction(timepoints, reconstructionSize)
+
+                    for tp in range(timepoints):
+                        """Restack data"""
+                        slices = cycles * planes_in_cycle
+                        tp_data = data[tp*slices:(tp + 1)*slices]
+                        if self._widget.getRestackBool():
+                            try:
+                                restacked = np.zeros_like(tp_data)
+                                for i in range(planes_in_cycle):
+                                    restacked[i * cycles:(i + 1) * cycles] = tp_data[i::planes_in_cycle]
+                            except ValueError:
+                                self._logger.warning('Data shape does not match given restacking parameters')
+                        else:
+                            restacked = tp_data
+                        if self._widget.getPosScanDirection():
+                            restacked = np.flip(restacked, 0)
+                            self._logger.debug('Reconstructing data tp: %s' % tp)
+                        recon = self._reconstructor.simpleDeskew(restacked, self._widget.getPixelSizeNm(),
+                                                             self._widget.getSkewAngleRad(),
+                                                             self._widget.getDeltaY(),
+                                                             self._widget.getReconstructionVxSize())
+                        reconObj.addReconstructionTimepoint(tp, recon)
+                    self._widget.addNewReconstruction(reconObj, f"{reconObj.name}_{color}")
+
+
+            finally:
+                    if not preloaded:
+                        dataObj.checkAndUnloadData()
             if not consolidate:
                 self._widget.addNewReconstruction(reconObj, reconObj.name)
 
