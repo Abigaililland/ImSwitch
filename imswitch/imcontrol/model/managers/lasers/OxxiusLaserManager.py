@@ -52,7 +52,7 @@ from .LaserManager import LaserManager
 from imswitch.imcommon.model import initLogger
 
 
-class OxxiusCombinerLaserManager(LaserManager):
+class OxxiusLaserManager(LaserManager):
     """ LaserManager for controlling one channel of an AA Opto-Electronic
     acousto-optic modulator/tunable filter through RS232 communication.
 
@@ -70,11 +70,11 @@ class OxxiusCombinerLaserManager(LaserManager):
         self._rs232manager = lowLevelManagers['rs232sManager'][
             laserInfo.managerProperties['rs232device']
         ]
-        cmd = 'AS 1'
-        self._rs232manager.query(cmd)
+        #cmd = 'AS 1'
+        #self._rs232manager.query(cmd)
 
         self.blankingOn()
-        self.internalControl()
+        #self.internalControl()
 
         super().__init__(laserInfo, name, isBinary=False, valueUnits='arb', valueDecimals=0)
 
@@ -82,10 +82,10 @@ class OxxiusCombinerLaserManager(LaserManager):
         """Turn on (1) or off (0) laser emission"""
         if enabled:
             value = 1
-            cmd = 'CW 1'
+            cmd = 'AM 0'
             self._rs232manager.query(cmd)
         else:
-            cmd = 'CW 0'
+            cmd = 'AM 1'
             self._rs232manager.query(cmd)
             value = 0
         #cmd = 'SH' + str(self._channel) +' '+ str(value)
@@ -96,17 +96,17 @@ class OxxiusCombinerLaserManager(LaserManager):
         Sends a RS232 command to the laser specifying the new intensity.
         """
         valueaotf = round(power)  # assuming input value is [0,100]
-        cmd ='C ' + str(valueaotf)
+        cmd ='P ' + str(valueaotf)
         self._rs232manager.query(cmd)
 
     def blankingOn(self):
         """Disable digital modulation"""
-        cmd = 'CW 1'
+        cmd = 'AM 0'
         self._rs232manager.query(cmd)
 
     def blankingExt(self):
         """Switch the banking to external"""
-        cmd = 'CW 0'
+        cmd = 'AM 1'
         self._rs232manager.query(cmd)
 
     def setScanModeActive(self, active):
