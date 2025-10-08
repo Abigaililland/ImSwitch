@@ -9,7 +9,7 @@ from imswitch.imcommon.model import APIExport, dirtools
 from imswitch.imcontrol.view import guitools
 from imswitch.imcommon.view.guitools import colorutils
 
-class TriggerScopePLSRController(ImConWidgetController):
+class TriggerScopePhotophysicsController(ImConWidgetController):
     """ Linked to TriggerScopeRasterWidget."""
 
     def __init__(self, *args, **kwargs):
@@ -58,6 +58,7 @@ class TriggerScopePLSRController(ImConWidgetController):
         self._widget.sigLoadScanClicked.connect(self.loadScan)
         self._widget.sigRunScanClicked.connect(self.runScan)
         self._widget.sigParameterChanged.connect(self.updateScanParDict)
+        self._widget.sigParameterChanged.connect(self.plotSignalGraph)
 
     def getNumScanPositions(self):
         """ Returns the number of scan positions for the configured scan. """
@@ -118,30 +119,18 @@ class TriggerScopePLSRController(ImConWidgetController):
             #Set scan parameters
             self._widget.setTimeLapsePoints(self._scanParameterDict['timeLapsePoints'])
             self._widget.setTimeLapseDelayS(self._scanParameterDict['timeLapseDelayS'])
-            self._widget.setDelayBeforeOnTimeMs(self._scanParameterDict['delayBeforeOnTimeMs'])
             self._widget.setOnTimeMs(self._scanParameterDict['onTimeMs'])
             self._widget.setDelayAfterOnTimeMs(self._scanParameterDict['delayAfterOnTimeMs'])
             self._widget.setOffTimeMs(self._scanParameterDict['offTimeMs'])
             self._widget.setDelayAfterOffTimeMs(self._scanParameterDict['delayAfterOffTimeMs'])
-            self._widget.setDelayAfterDACStepMs(self._scanParameterDict['delayAfterDACStepMs'])
-            self._widget.setRoTimeMs(self._scanParameterDict['roTimeMs'])
-            self._widget.setDelayAfterRoMs(self._scanParameterDict['delayAfterRoMs'])
-            self._widget.setRoRestingPosUm(self._scanParameterDict['roRestingPosUm'])
-            self._widget.setRoStartPosUm(self._scanParameterDict['roStartPosUm'])
-            self._widget.setRoStepSizeUm(self._scanParameterDict['roStepSizeUm'])
-            self._widget.setRoSteps(self._scanParameterDict['roSteps'])
-            self._widget.setCycleStartPosUm(self._scanParameterDict['cycleStartPosUm'])
-            self._widget.setCycleStepSizeUm(self._scanParameterDict['cycleStepSizeUm'])
-            self._widget.setCycleSteps(self._scanParameterDict['cycleSteps'])
             #Set devices
             self._widget.setOnLaser(self._deviceParameterDict['onLaser'])
             self._widget.setOffLaser(self._deviceParameterDict['offLaser'])
-            self._widget.setRoLaser(self._deviceParameterDict['roLaser'])
-            self._widget.setRoScanDevice(self._deviceParameterDict['roScanDevice'])
             self._widget.setCycleScanDevice(self._deviceParameterDict['cycleScanDevice'])
 
         finally:
             self.settingParameters = False
+            self.plotSignalGraph()
 
 
     def getTriggerscopeParameters(self):
@@ -149,25 +138,12 @@ class TriggerScopePLSRController(ImConWidgetController):
         deviceParameterDict = self._deviceParameterDict
 
         scanParameterDict = {}
-        roConvFactor = self.positioners[deviceParameterDict['roScanDevice']].managerProperties['conversionFactor']
-        cycleConvFactor = self.positioners[deviceParameterDict['cycleScanDevice']].managerProperties['conversionFactor']
         scanParameterDict['onPulseTimeUs'] = int(self._scanParameterDict['onTimeMs'] * 1000)
         scanParameterDict['offPulseTimeUs'] = int(self._scanParameterDict['offTimeMs'] * 1000)
-        scanParameterDict['roPulseTimeUs'] = int(self._scanParameterDict['roTimeMs'] * 1000)
         scanParameterDict['timeLapsePoints'] = int(self._scanParameterDict['timeLapsePoints'])
         scanParameterDict['timeLapseDelayUs'] = int(self._scanParameterDict['timeLapseDelayS'] * 1000000)
-        scanParameterDict['delayBeforeOnUs'] = int(self._scanParameterDict['delayBeforeOnTimeMs'] * 1000)
         scanParameterDict['delayAfterOnUs'] = int(self._scanParameterDict['delayAfterOnTimeMs'] * 1000)
         scanParameterDict['delayAfterOffUs'] = int(self._scanParameterDict['delayAfterOffTimeMs'] * 1000)
-        scanParameterDict['delayAfterDACStepUs'] = int(self._scanParameterDict['delayAfterDACStepMs'] * 1000)
-        scanParameterDict['delayAfterRoUs'] = int(self._scanParameterDict['delayAfterRoMs'] * 1000)
-        scanParameterDict['roRestingV'] = self._scanParameterDict['roRestingPosUm'] / roConvFactor
-        scanParameterDict['roStartV'] = self._scanParameterDict['roStartPosUm'] / roConvFactor
-        scanParameterDict['roStepSizeV'] = self._scanParameterDict['roStepSizeUm'] / roConvFactor
-        scanParameterDict['roSteps'] = int(self._scanParameterDict['roSteps'])
-        scanParameterDict['cycleStartV'] = self._scanParameterDict['cycleStartPosUm'] / roConvFactor
-        scanParameterDict['cycleStepSizeV'] = self._scanParameterDict['cycleStepSizeUm'] / roConvFactor
-        scanParameterDict['cycleSteps'] = int(self._scanParameterDict['cycleSteps'])
 
         pLSRParameterDict = {'deviceParameters': deviceParameterDict, 'scanParameters': scanParameterDict}
 
@@ -195,7 +171,7 @@ class TriggerScopePLSRController(ImConWidgetController):
             if not sigScanStartingEmitted:
                 self.emitScanSignal(self._commChannel.sigScanStarting)
             triggerscopeParameters = self.getTriggerscopeParameters()
-            self._master.triggerScopeManager.runScan(triggerscopeParameters, type='pLS-RESOLFTScan')
+            self._master.triggerScopeManager.runScan(triggerscopeParameters, type='MifobioScan')
 
         except Exception:
             self._logger.error(traceback.format_exc())
@@ -233,28 +209,79 @@ class TriggerScopePLSRController(ImConWidgetController):
         #Get scan parameters
         self._scanParameterDict['timeLapsePoints'] = self._widget.getTimeLapsePoints()
         self._scanParameterDict['timeLapseDelayS'] = self._widget.getTimeLapseDelayS()
-        self._scanParameterDict['delayBeforeOnTimeMs'] = self._widget.getDelayBeforeOnTimeMs()
         self._scanParameterDict['onTimeMs'] = self._widget.getOnTimeMs()
         self._scanParameterDict['delayAfterOnTimeMs'] = self._widget.getDelayAfterOnTimeMs()
         self._scanParameterDict['offTimeMs'] = self._widget.getOffTimeMs()
         self._scanParameterDict['delayAfterOffTimeMs'] = self._widget.getDelayAfterOffTimeMs()
-        self._scanParameterDict['delayAfterDACStepMs'] = self._widget.getDelayAfterDACStepMs()
-        self._scanParameterDict['roTimeMs'] = self._widget.getRoTimeMs()
-        self._scanParameterDict['delayAfterRoMs'] = self._widget.getDelayAfterRoMs()
-        self._scanParameterDict['roRestingPosUm'] = self._widget.getRoRestingPosUm()
-        self._scanParameterDict['roStartPosUm'] = self._widget.getRoStartPosUm()
-        self._scanParameterDict['roStepSizeUm'] = self._widget.getRoStepSizeUm()
-        self._scanParameterDict['roSteps'] = self._widget.getRoSteps()
-        self._scanParameterDict['cycleStartPosUm'] = self._widget.getCycleStartPosUm()
-        self._scanParameterDict['cycleStepSizeUm'] = self._widget.getCycleStepSizeUm()
-        self._scanParameterDict['cycleSteps'] = self._widget.getCycleSteps()
         #Get device parameters
         self._deviceParameterDict['onLaser'] = self._widget.getOnLaser()
         self._deviceParameterDict['offLaser'] = self._widget.getOffLaser()
-        self._deviceParameterDict['roLaser'] = self._widget.getRoLaser()
-        self._deviceParameterDict['roScanDevice'] = self._widget.getRoScanDevice()
         self._deviceParameterDict['cycleScanDevice'] = self._widget.getCycleScanDevice()
 
+    def plotSignalGraph(self):
+
+        OnTime = self._widget.getOnTimeMs()
+        DelayAfterOnTime = self._widget.getDelayAfterOnTimeMs()
+        OffTime = self._widget.getOffTimeMs()
+        dwellTime = float(OnTime + DelayAfterOnTime + OffTime+10)
+        graphSamples = 10000
+
+        areas = []
+        signals = []
+        colors = []
+        for i in range(3):
+
+            x = np.linspace(0, dwellTime, graphSamples)
+            signal = np.zeros(graphSamples)
+            try:
+                # start = float(self._widget.pxParameters['sta' + deviceName].text())
+                # end = float(self._widget.pxParameters['end' + deviceName].text())
+                if i == 0:
+                    signal[x > 0] = 1
+                    #signal[x < OnTime] = 1
+                    signal[x > OnTime] = 0
+                    color_test = '#8200c8'
+                elif i ==1:
+                    signal[x > OnTime] = 0
+                    signal[x < OnTime+DelayAfterOnTime] = 0
+                    color_test = '#000000'
+                elif i ==2:
+                    signal[(x > OnTime+DelayAfterOnTime)] = 1
+                    signal[x> OnTime+DelayAfterOnTime+OffTime] = 0
+                    color_test = '#00f7ff'
+
+            except ValueError:
+                pass
+            areas.append(x)
+            signals.append(signal)
+            # colors.append(
+            #     colorutils.wavelengthToHex(
+            #         self._setupInfo.lasers[deviceName].wavelength
+            #     ) if isLaser else '#ffffff'
+            # )
+            colors.append(color_test)
+        # for deviceName in self.TTLDevices.keys():
+        #     isLaser = deviceName in self._setupInfo.lasers
+        #     x = np.linspace(0, dwellTime, graphSamples)
+        #     signal = np.zeros(graphSamples)
+        #     try:
+        #         # start = float(self._widget.pxParameters['sta' + deviceName].text())
+        #         # end = float(self._widget.pxParameters['end' + deviceName].text())
+        #         signal[x < OnTime] = 1
+        #         signal[(x > OnTime) & (x < OnTime+DelayAfterOnTime)] = 0
+        #         signal[(x > OnTime+DelayAfterOnTime) & (x < OnTime+DelayAfterOnTime+OffTime)] = 1
+        #
+        #     except ValueError:
+        #         pass
+        #     areas.append(x)
+        #     signals.append(signal)
+        #     # colors.append(
+        #     #     colorutils.wavelengthToHex(
+        #     #         self._setupInfo.lasers[deviceName].wavelength
+        #     #     ) if isLaser else '#ffffff'
+        #     # )
+        #     colors.append('#00ffea')
+        self._widget.plotSignalGraph(areas, signals, colors)
     def emitScanSignal(self, signal, *args):
         signal.emit(*args)
 

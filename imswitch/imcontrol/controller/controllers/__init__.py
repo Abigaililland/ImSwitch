@@ -24,3 +24,4 @@ from .SetupStatusController import SetupStatusController
 from .TriggerScopePLSRMulticolorController import TriggerScopePLSRMulticolorController
 from .EtSnoutyController import EtSnoutyController
 from .TriggerScopeLSXYRController import TriggerScopeLSXYRController
+from .TriggerScopePhotophysicsController import TriggerScopePhotophysicsController

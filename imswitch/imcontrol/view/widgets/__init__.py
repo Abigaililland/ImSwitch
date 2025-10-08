@@ -23,6 +23,7 @@ from .LightSheetMulticolorWidget import LightSheetMulticolorWidget
 from .TriggerScopePLSRMulticolorWidget import TriggerScopePLSRMulticolorWidget
 from .EtSnoutyWidget import EtSnoutyWidget
 from .TriggerScopeLSXYRWidget import TriggerScopeLSXYRWidget
+from .TriggerScopePhotophysicsWidget import TriggerScopePhotophysicsWidget
 
 from .BSC203Widget import BSC203Widget
 from .SetupStatusWidget import SetupStatusWidget

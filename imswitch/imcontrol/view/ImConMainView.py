@@ -61,6 +61,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'TriggerScopeGalvoDetection': _DockInfo(name='TriggerScopeGalvoDetection', yPosition=2),
             'TriggerScopePLSR': _DockInfo(name='TriggerScopePLSR', yPosition=2),
             'TriggerScopePLSRMulticolor': _DockInfo(name='TriggerScopePLSRMulticolor', yPosition=2),
+            'TriggerScopePhotophysics': _DockInfo(name='TriggerScopePhotophysics', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),

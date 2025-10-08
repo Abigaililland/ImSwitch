@@ -91,6 +91,8 @@ class TriggerScopeManager(SignalInterface):
             self.runpLSRESOLFTMulticolorScan(parameterDict)
         elif type == 'LSXYRScan':
             self.runLSXYRScan(parameterDict)
+        elif type == 'MifobioScan':
+            self.runMifobioScan(parameterDict)
         else:
             self.__logger.info('Unknown scan type')
 
@@ -116,6 +118,24 @@ class TriggerScopeManager(SignalInterface):
 
         self.__logger.debug('Parameters set')
         self.send('pLS-RESOLFT_SCAN')
+        self.sigScanStarted.emit()
+
+    def runMifobioScan(self, pLSRESOLFTScanParameters):
+        deviceParameters = pLSRESOLFTScanParameters['deviceParameters']
+
+        onLaserTTLLine = self._deviceInfo[deviceParameters['onLaser']]['TTLLine']
+        offLaserTTLLine = self._deviceInfo[deviceParameters['offLaser']]['TTLLine']
+
+        self.setParameter('onLaserTTLChan', onLaserTTLLine)
+        self.setParameter('offLaserTTLChan', offLaserTTLLine)
+
+        scanParameters = pLSRESOLFTScanParameters['scanParameters']
+
+        for key, value in scanParameters.items():
+            self.setParameter(key, value)
+
+        self.__logger.debug('Parameters set')
+        self.send('MIFOBIO_SCAN')
         self.sigScanStarted.emit()
     def runpLSRESOLFTMulticolorScan(self, pLSRESOLFTScanParameters):
         deviceParameters = pLSRESOLFTScanParameters['deviceParameters']

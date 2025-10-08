@@ -5,7 +5,7 @@ from imswitch.imcontrol.view import guitools
 from .basewidgets import Widget
 
 
-class TriggerScopePLSRWidget(Widget):
+class TriggerScopePhotophysicsWidget(Widget):
     """ Widget containing scanner interface and beadscan reconstruction.
             This class uses the classes GraphFrame, MultipleScanWidget and IllumImageWidget"""
 
@@ -13,6 +13,9 @@ class TriggerScopePLSRWidget(Widget):
     sigLoadScanClicked = QtCore.Signal()
     sigRunScanClicked = QtCore.Signal()
     sigParameterChanged = QtCore.Signal()
+    # sigOnTimeMsChanged = QtCore.Signal()
+    # sigOffTimeMsChanged = QtCore.Signal()
+    # sigdelayAfterOnTimeMsChanged = QtCore.Signal()
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -142,6 +145,7 @@ class TriggerScopePLSRWidget(Widget):
                                   QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
             currentRow, 0, 1, 4)
         currentRow += 1
+        graphRow = currentRow
         self.grid.addWidget(timeLapsePointsLabel, currentRow, 0)
         self.grid.addWidget(self.timeLapsePointsEdit, currentRow, 1)
         self.grid.addWidget(timeLapseDelayLabel, currentRow, 2)
@@ -152,6 +156,7 @@ class TriggerScopePLSRWidget(Widget):
                                   QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding),
             currentRow, 0, 1, 4)
         currentRow += 1
+
 
         self.grid.addWidget(onTimeLabel, currentRow, 0)
         self.grid.addWidget(self.onTimeEdit, currentRow, 1)
@@ -178,7 +183,10 @@ class TriggerScopePLSRWidget(Widget):
         self.grid.addWidget(self.offLaserEdit, currentRow, 1)
         self.grid.addWidget(cycleScanDeviceLabel, currentRow, 2)
         self.grid.addWidget(self.cycleScanDeviceEdit, currentRow, 3)
+        currentRow+=1
 
+        # Add pulse graph
+        self.grid.addWidget(self.graph, graphRow, 2, currentRow - graphRow, 3)
 
         # Connect signals
         self.saveScanBtn.clicked.connect(self.sigSaveScanClicked)
