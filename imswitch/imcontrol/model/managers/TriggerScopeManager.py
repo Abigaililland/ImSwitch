@@ -313,8 +313,13 @@ class TriggerScopeManager(SignalInterface):
     #     msg = 'TTL' + str(self._deviceInfo[target]['Channel']) + ',' + str(booleanValue)
     #     self.send(msg)
     def setDigital(self, target, enable):
-        msg = 'TTL' + str(self._deviceInfo[target]['Channel']) + ',' + str(enable)
-        self.send(msg)
+        self.__logger.debug(enable)
+        if enable:
+            msg = 'TTL' + str(self._deviceInfo[target]['TTLLine']) + ',' + str('1')
+            self.send(msg)
+        else:
+            msg = 'TTL' + str(self._deviceInfo[target]['TTLLine']) + ',' + str('0')
+            self.send(msg)
     def setAnalog(self, target, voltage):
 
         if self._deviceInfo[target]['MinV'] <= voltage <= self._deviceInfo[target]['MaxV']:

@@ -160,7 +160,7 @@ class ImRecMainViewController(ImRecWidgetController):
         from scipy.ndimage import affine_transform
         from skimage.transform import AffineTransform, warp
 
-        path = 'D:/Data/2025-05-20/'
+        path = 'D:/SnoutyData/2025-10-08/'
         typef = '.hdf5'
 
         ROI_file = 'ROI.txt'
@@ -283,7 +283,7 @@ class ImRecMainViewController(ImRecWidgetController):
             else:
                 pass
     def reconstructMultiColor(self):
-        path = 'D:/Data/2025-05-20/'
+        path = 'D:/SnoutyData/2025-10-08/'
         typef = '.hdf5'
         datapath = self._currentDataObj.dataPath
 

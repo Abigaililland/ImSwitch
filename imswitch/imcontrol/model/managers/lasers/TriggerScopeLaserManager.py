@@ -16,7 +16,7 @@ class TriggerScopeLaserManager(LaserManager):
 
     def setEnabled(self, enabled):
         try:
-            self._triggerScopeManager.setAnalogTTLline(self.name, 5)
+            self._triggerScopeManager.setDigital(self.name, enabled)
         except:
             self.__logger.error("Error trying to enable laser.")
 

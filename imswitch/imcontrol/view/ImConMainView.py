@@ -61,6 +61,7 @@ class ImConMainView(QtWidgets.QMainWindow):
             'TriggerScopeGalvoDetection': _DockInfo(name='TriggerScopeGalvoDetection', yPosition=2),
             'TriggerScopePLSR': _DockInfo(name='TriggerScopePLSR', yPosition=2),
             'TriggerScopePLSRMulticolor': _DockInfo(name='TriggerScopePLSRMulticolor', yPosition=2),
+            'TriggerScopeLSXYR': _DockInfo(name='TriggerScopeLSXYR', yPosition=2),
             'BeadRec': _DockInfo(name='Bead Rec', yPosition=3),
             'AlignmentLine': _DockInfo(name='Alignment Tool', yPosition=3),
             'AlignAverage': _DockInfo(name='Axial Alignment Tool', yPosition=3),
@@ -69,8 +70,8 @@ class ImConMainView(QtWidgets.QMainWindow):
             'FFT': _DockInfo(name='FFT Tool', yPosition=3),
             'SetupStatus': _DockInfo(name='SetupStatus', yPosition=3),
             'WellPlate': _DockInfo(name='FFT Tool', yPosition=3),
-            'EtSnouty': _DockInfo(name='EtSnouty', yPosition=0),
-            'TriggerScopeLSXYR': _DockInfo(name='TriggerScopeLSXYR', yPosition=1)
+            'EtSnouty': _DockInfo(name='EtSnouty', yPosition=0)
+
         }
         leftDockInfos = {
             'Settings': _DockInfo(name='Detector Settings', yPosition=0),
