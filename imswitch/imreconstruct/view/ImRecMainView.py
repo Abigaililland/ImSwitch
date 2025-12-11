@@ -157,16 +157,16 @@ class ImRecMainView(QtWidgets.QMainWindow):
         color_map = None
 
         # if name=='crop_green.hdf5':
-        if name.endswith('crop_green.hdf5'):
+        if name.endswith('green'):
             color_map = 'green'
             name="crop_green"
             image_mode = True
 
-        elif name.endswith('crop_orange.hdf5'):
-            color_map = 'orange'
+        elif name.endswith('orange'):
+            color_map = 'yellow'
             name="crop_orange"
             image_mode = True
-        elif name.endswith('crop_red.hdf5'):
+        elif name.endswith('red'):
             color_map = 'red'
             name="crop_red"
             image_mode = True

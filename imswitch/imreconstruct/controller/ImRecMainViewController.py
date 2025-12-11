@@ -1,6 +1,8 @@
 import copy
 import os
-
+import cupy as cp
+from cupyx.scipy.ndimage import affine_transform
+import h5py
 import numpy as np
 import tifffile as tiff
 
@@ -149,102 +151,233 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.reconstruct([self._currentDataObj], consolidate=False)
 
-    def crop_and_rotate(self):
+    def apply_affine_gpu_batch(self, stack, M):
+        stack_gpu = cp.array(stack, dtype=cp.float32)
 
-        import h5py
-        import numpy as np
-        from numpy.linalg import lstsq
-        import scipy.ndimage
-        import re
-        from scipy.ndimage import rotate
-        from scipy.ndimage import affine_transform
-        from skimage.transform import AffineTransform, warp
+        matrix = cp.array([[M[0, 0], M[0, 1]],
+                           [M[1, 0], M[1, 1]]])
+        offset = cp.array([M[1, 2], M[0, 2]])
+        Minv = cp.linalg.inv(matrix.T)
+        offset_sci = -Minv @ offset
 
-        path = 'D:/SnoutyData/2025-10-08/'
-        typef = '.hdf5'
+        out_gpu = cp.zeros_like(stack_gpu)
 
-        ROI_file = 'ROI.txt'
+        # Batch GPU processing (loop is cheap on GPU)
+        for i in range(stack_gpu.shape[0]):
+            out_gpu[i] = affine_transform(stack_gpu[i], Minv, offset=offset_sci, order=1)
 
-        Transform = 'Transform.txt'
+        return cp.asnumpy(out_gpu).astype(np.uint16)
 
-        ROI_params = np.loadtxt(path + ROI_file, dtype=int)
-
-        Transform_file = np.loadtxt(path + Transform, dtype=float)
-
+    def crop_and_rotate_gpu(self, chunk_size=400):
         if self._currentDataObj is None:
             return
 
         datapath = self._currentDataObj.dataPath
+        folder = os.path.dirname(datapath)
+        typef = '.hdf5'
 
-        with h5py.File(datapath, 'r') as datafile:
-            print(datafile['Orca'].shape)
-            data = np.array(datafile['Orca'][:])
-        print(np.shape(data))
+        ROI_file = os.path.join(folder, 'ROI.txt')
+        Transform_file = os.path.join(folder, 'Transform.txt')
 
-        with h5py.File(path + '1tp' + typef, 'w') as hdf:
+        ROI = np.loadtxt(ROI_file, dtype=int)
+        T = np.loadtxt(Transform_file, dtype=float)
 
-            hdf.create_dataset('Orca', data=data[:, :, :])
+        # Output files
+        temp_files = {
+            "green": os.path.join(folder, "crop_green" + typef),
+            "red": os.path.join(folder, "crop_red" + typef),
+            "orange": os.path.join(folder, "crop_orange" + typef)
+        }
+        # Open input file once, create output files once
+        with h5py.File(datapath, "r") as infile, \
+                h5py.File(temp_files["green"], "w") as gfile, \
+                h5py.File(temp_files["red"], "w") as rfile, \
+                h5py.File(temp_files["orange"], "w") as ofile:
 
+            dset = infile["Orca"]
+            nframes, H, W = dset.shape
 
-        with h5py.File(datapath + 'crop_orange' + typef, 'w') as fw:
-            # data_top = data[: ,63:275,43:1325]
-            # fw.create_dataset('Top',data = data_top)
-            # data_bot = data[:,472:684,35:1317]
-            # fw.create_dataset('Bot', data=data_bot)
-            data_orange = data[:, ROI_params[0][0]:ROI_params[0][1], ROI_params[1][0]:ROI_params[1][1]]
-            # fw.create_dataset('Orca', data=data_red)
-            data_green = data[:, ROI_params[2][0]:ROI_params[2][1], ROI_params[3][0]:ROI_params[3][1]]
-            fw.create_dataset('Orca', data=data_orange)
-            data_red = data[:, ROI_params[4][0]:ROI_params[4][1], ROI_params[5][0]:ROI_params[5][1]]
-        n_stack = np.shape(data_red)[0]
-        transformed_data_red = np.zeros(np.shape(data_red), dtype=np.int16)
-        transformed_data_green = np.zeros(np.shape(data_green), dtype=np.int16)
-        # with h5py.File(path+name + 'cropRed' + typef, 'w') as hdf:
+            # compute output shapes
+            H_or, W_or = ROI[0, 1] - ROI[0, 0], ROI[1, 1] - ROI[1, 0]
+            H_gr, W_gr = ROI[2, 1] - ROI[2, 0], ROI[3, 1] - ROI[3, 0]
+            H_rd, W_rd = ROI[4, 1] - ROI[4, 0], ROI[5, 1] - ROI[5, 0]
 
-        # hdf.create_dataset('Orca', data=data_red)
+            # create output datasets
+            g_out = gfile.create_dataset("Orca", (nframes, H_gr, W_gr), dtype=np.uint16)
+            r_out = rfile.create_dataset("Orca", (nframes, H_rd, W_rd), dtype=np.uint16)
+            o_out = ofile.create_dataset("Orca", (nframes, H_or, W_or), dtype=np.uint16)
 
-        # with h5py.File(path+name + 'cropGreen' + typef, 'w') as hdf:
+            # Prepare transform matrices
+            greenT = T[0:2, :]
+            redT = T[2:4, :]
 
-        # hdf.create_dataset('Orca', data=data_green)
+            # ---- CHUNKED PROCESSING ----
+            for start in range(0, nframes, chunk_size):
+                end = min(start + chunk_size, nframes)
 
-        # = AffineTransform(
-        #    matrix=np.array([[Transform_file[0][0], Transform_file[0][1],Transform_file[0][2] ],[Transform_file[1][0], Transform_file[1][1],Transform_file[1][2]],[0,0,1]])
+                # Load only this chunk
+                chunk = dset[start:end]  # shape (chunk, H, W)
+
+                # ---- ORANGE (no transform) ----
+                orange = chunk[:, ROI[0, 0]:ROI[0, 1], ROI[1, 0]:ROI[1, 1]]
+                o_out[start:end] = orange.astype(np.uint16)
+
+                # ---- GREEN ----
+                green = chunk[:, ROI[2, 0]:ROI[2, 1], ROI[3, 0]:ROI[3, 1]]
+                greenT_out = self.apply_affine_gpu_batch(green, greenT)
+                g_out[start:end] = greenT_out
+
+                # ---- RED ----
+                red = chunk[:, ROI[4, 0]:ROI[4, 1], ROI[5, 0]:ROI[5, 1]]
+                redT_out = self.apply_affine_gpu_batch(red, redT)
+                r_out[start:end] = redT_out
+
+                print(f"Processed frames {start} → {end} / {nframes}")
+
+        return temp_files
+
+        # with h5py.File(datapath, 'r') as datafile:
+        #     data = np.array(datafile['Orca'][:])
+        #     print(f"Original data shape: {data.shape}")
         #
-        affine_matrix_green = np.array(
-            [[Transform_file[0][0], Transform_file[0][1]], [Transform_file[1][0], Transform_file[1][1]]])
-        affine_matrix_red = np.array(
-            [[Transform_file[2][0], Transform_file[2][1]], [Transform_file[3][0], Transform_file[3][1]]])
+        # # Crop each channel
+        # data_orange = data[:, ROI_params[0, 0]:ROI_params[0, 1], ROI_params[1, 0]:ROI_params[1, 1]]
+        # data_green = data[:, ROI_params[2, 0]:ROI_params[2, 1], ROI_params[3, 0]:ROI_params[3, 1]]
+        # data_red = data[:, ROI_params[4, 0]:ROI_params[4, 1], ROI_params[5, 0]:ROI_params[5, 1]]
+        #
+        # # Apply GPU affine transform
+        # # def apply_affine_gpu(stack, M):
+        # #     stack_gpu = cp.array(stack, dtype=cp.float32)
+        # #     matrix = cp.array([[M[0, 0], M[0, 1]], [M[1, 0], M[1, 1]]])
+        # #     offset = cp.array([M[1, 2], M[0, 2]])
+        # #     Minv = cp.linalg.inv(matrix.T)
+        # #     offset_for_scipy = -Minv @ offset
+        # #     out_gpu = cp.zeros_like(stack_gpu)
+        # #     for i in range(stack_gpu.shape[0]):
+        # #         out_gpu[i] = affine_transform(stack_gpu[i], Minv, offset=offset_for_scipy, order=1)
+        # #
+        # #     return cp.asnumpy(out_gpu)
         #
         #
-        offset_green = np.array([Transform_file[1][2], Transform_file[0][2]])
-        offset_red = np.array([Transform_file[3][2], Transform_file[2][2]])
         #
-        # # scipy.ndimage.affine_transform needs the *inverse* of the matrix
-        matrix_inv_green = np.linalg.inv(affine_matrix_green.T)
-        matrix_inv_red = np.linalg.inv(affine_matrix_red.T)
+        # # Transform green channel
+        # greenT = T[0:2, :]
+        # green_transformed = apply_affine_gpu(data_green, greenT)
+        # green_transformed = green_transformed.astype(np.uint16)
         #
-        # # The correct offset must map output coords through the inverse:
-        offset_for_scipy_green = -matrix_inv_green @ offset_green
-        offset_for_scipy_red = -matrix_inv_red @ offset_red
-
+        # # Transform red channel
+        # redT = T[2:4, :]
+        # red_transformed = apply_affine_gpu(data_red, redT)
+        # red_transformed = red_transformed.astype(np.uint16)
         #
-        # Apply the affine transform to align img2 to img1
+        # # Orange channel does not need transform
+        # orange_transformed = data_orange
+        #
+        # # Save temporary HDF5 files for DataObj
+        # temp_files = {
+        #     'green': os.path.join(folder, 'crop_green' + typef),
+        #     'red': os.path.join(folder, 'crop_red' + typef),
+        #     'orange': os.path.join(folder, 'crop_orange' + typef)
+        # }
+        #
+        # for name, arr in zip(['green', 'red', 'orange'],
+        #                      [green_transformed, red_transformed, orange_transformed]):
+        #     with h5py.File(temp_files[name], 'w') as f:
+        #         f.create_dataset('Orca', data=arr)
+        #
+        # return temp_files
 
-        for i in range(n_stack):
-            # transformed_data_green[i] = warp(data_green[i], inverse_map=affine_matrix_green.inverse)
-            transformed_data_green[i] = affine_transform(data_green[i], matrix_inv_green, offset=offset_for_scipy_green,
-                                                         order=1)
-        for i in range(n_stack):
-            transformed_data_red[i] = affine_transform(data_red[i], matrix_inv_red, output_shape=data_orange[i].shape,
-                                                       offset=offset_for_scipy_red, order=1)
-
-        with h5py.File(datapath + 'crop_red' + typef, 'w') as hdf:
-
-            hdf.create_dataset('Orca', data=transformed_data_red)
-
-        with h5py.File(datapath + 'crop_green' + typef, 'w') as hdf:
-
-            hdf.create_dataset('Orca', data=transformed_data_green)
+    # def crop_and_rotate_fast(self):
+    #     import h5py
+    #     import numpy as np
+    #     #from scipy.ndimage import affine_transform
+    #     from cupyx.scipy.ndimage import affine_transform
+    #
+    #     datapath = self._currentDataObj.dataPath
+    #     folder = os.path.dirname(datapath)
+    #
+    #     # Load ROI + transform files once
+    #     ROI = np.loadtxt(folder + '/ROI.txt', dtype=int)
+    #     T = np.loadtxt(folder + '/Transform.txt', dtype=float)
+    #
+    #     with h5py.File(datapath, 'r') as f:
+    #         data = f['Orca'][()]  # Loads once
+    #
+    #     # -------------------------
+    #     # Crops
+    #     # -------------------------
+    #     orange = data[:, ROI[0, 0]:ROI[0, 1], ROI[1, 0]:ROI[1, 1]]
+    #     green = data[:, ROI[2, 0]:ROI[2, 1], ROI[3, 0]:ROI[3, 1]]
+    #     red = data[:, ROI[4, 0]:ROI[4, 1], ROI[5, 0]:ROI[5, 1]]
+    #
+    #     # -------------------------
+    #     # Apply affine transforms in batch, not per frame
+    #     # -------------------------
+    #
+    #     def apply_affine_gpu(stack, T):
+    #         # stack: Z, Y, X (NumPy array)
+    #         stack_gpu = cp.array(stack)  # move to GPU
+    #
+    #         M = cp.array([[T[0, 0], T[0, 1]], [T[1, 0], T[1, 1]]])
+    #         offset = cp.array([T[1, 2], T[0, 2]])
+    #         Minv = cp.linalg.inv(M.T)
+    #         offset_for_scipy = -Minv @ offset
+    #
+    #         # Output array on GPU
+    #         out_gpu = cp.zeros_like(stack_gpu)
+    #
+    #         # Apply affine transform to all slices (still loop, but on GPU)
+    #         for i in range(stack_gpu.shape[0]):
+    #             out_gpu[i] = affine_transform(stack_gpu[i], Minv, offset=offset_for_scipy, order=1)
+    #
+    #         return cp.asnumpy(out_gpu)  # back to CPU
+    #
+    #     def apply_original_affine(stack, T):
+    #         """
+    #         stack: (N, H, W)
+    #         T: 2×3 matrix from Transform_file (two rows)
+    #         """
+    #
+    #         import numpy as np
+    #         from scipy.ndimage import affine_transform
+    #
+    #         # Extract same as your original code
+    #         M = np.array([[T[0, 0], T[0, 1]],
+    #                       [T[1, 0], T[1, 1]]])
+    #
+    #         # Note: Your original code uses swapped order here:
+    #         # offset = [ty, tx]
+    #         offset = np.array([T[1, 2], T[0, 2]])
+    #
+    #         # Your original inversion step
+    #         Minv = np.linalg.inv(M.T)
+    #
+    #         # Original offset mapping
+    #         sci_offset = -Minv @ offset
+    #
+    #         out = np.zeros_like(stack)
+    #         for i in range(stack.shape[0]):
+    #             out[i] = affine_transform(
+    #                 stack[i],
+    #                 matrix=Minv,
+    #                 offset=sci_offset,
+    #                 order=1,
+    #                 mode='constant'
+    #             )
+    #         return out
+    #
+    #     greenT = apply_affine_gpu(green, T[0:2, :])
+    #     redT = apply_affine_gpu(red, T[2:4, :])
+    #     # orange stays unchanged
+    #
+    #     # -------------------------
+    #     # Save results once
+    #     # -------------------------
+    #     typef = '.hdf5'
+    #     with h5py.File(datapath + 'crop_green' + typef, 'w') as f: f['Orca'] = greenT
+    #     with h5py.File(datapath + 'crop_red' + typef, 'w') as f: f['Orca'] = redT
+    #     with h5py.File(datapath + 'crop_orange' + typef, 'w') as f: f['Orca'] = orange
+    #
 
     def quickLoadDatafromFile(self, dataPath):
 
@@ -282,17 +415,57 @@ class ImRecMainViewController(ImRecWidgetController):
                 return dataobj
             else:
                 pass
+    # def reconstructMultiColor(self):
+    #     path = 'D:/SnoutyData/2025-10-08/'
+    #     typef = '.hdf5'
+    #     datapath = self._currentDataObj.dataPath
+    #
+    #     self.crop_and_rotate()
+    #
+    #
+    #     data = [self.quickLoadDatafromFile(datapath + 'crop_green' + typef),self.quickLoadDatafromFile(datapath + 'crop_red' + typef),self.quickLoadDatafromFile(datapath + 'crop_orange' + typef)]
+    #
+    #     self.reconstruct(data, consolidate=False)
+    # def reconstructMultiColor(self):
+    #     typef = '.hdf5'
+    #     datapath = self._currentDataObj.dataPath
+    #
+    #     # -----------------------
+    #     # 1. Perform crop + rotate only once
+    #     # -----------------------
+    #     self.crop_and_rotate_fast()  # <-- replaced version, see below
+    #
+    #     # -----------------------
+    #     # 2. Load 3 color stacks in one shot
+    #     # -----------------------
+    #     green = self.quickLoadDatafromFile(datapath + 'crop_green' + typef)
+    #     red = self.quickLoadDatafromFile(datapath + 'crop_red' + typef)
+    #     orange = self.quickLoadDatafromFile(datapath + 'crop_orange' + typef)
+    #
+    #     # -----------------------
+    #     # 3. Run reconstruction once for all 3
+    #     # -----------------------
+    #     self.reconstruct([green, red, orange], consolidate=False)
     def reconstructMultiColor(self):
-        path = 'D:/SnoutyData/2025-10-08/'
-        typef = '.hdf5'
-        datapath = self._currentDataObj.dataPath
+        temp_files = self.crop_and_rotate_gpu()
 
-        self.crop_and_rotate()
+        green_obj = DataObj('green', None, path=temp_files['green'])
+        red_obj = DataObj('red', None, path=temp_files['red'])
+        orange_obj = DataObj('orange', None, path=temp_files['orange'])
 
+        for obj in [green_obj, red_obj, orange_obj]:
+            obj.checkAndLoadData()
 
-        data = [self.quickLoadDatafromFile(datapath + 'crop_green' + typef),self.quickLoadDatafromFile(datapath + 'crop_red' + typef),self.quickLoadDatafromFile(datapath + 'crop_orange' + typef)]
+        self.reconstruct([green_obj, red_obj, orange_obj], consolidate=False)
 
-        self.reconstruct(data, consolidate=False)
+        # Unload before deleting temp files
+        for obj in [green_obj, red_obj, orange_obj]:
+            obj.checkAndUnloadData()
+
+        # Now safe to delete
+        for f in temp_files.values():
+            if os.path.exists(f):
+                os.remove(f)
 
     def reconstructMulti(self, consolidate):
         self.reconstruct(self._widget.getMultiDatas(), consolidate)
@@ -399,7 +572,7 @@ class ImRecMainViewController(ImRecWidgetController):
                     split_obj.dataLoaded = True
                     split_objs.append(split_obj)
 
-                colors = ['green', 'orange', 'red']
+                colors = ['green', 'yellow', 'red']
                 for split_obj, color in zip(data, colors):
                     reconObj = ReconObj(split_obj.name, self._widget.timepoints_text)
                     split_part = split_obj.data
