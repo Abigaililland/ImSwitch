@@ -151,22 +151,59 @@ class ImRecMainViewController(ImRecWidgetController):
 
         self.reconstruct([self._currentDataObj], consolidate=False)
 
-    def apply_affine_gpu_batch(self, stack, M):
-        stack_gpu = cp.array(stack, dtype=cp.float32)
+    # def apply_affine_gpu_batch(self, stack, M):
+    #     stack_gpu = cp.array(stack, dtype=cp.float32)
+    #
+    #     matrix = cp.array([[M[0, 0], M[0, 1]],
+    #                        [M[1, 0], M[1, 1]]])
+    #     offset = cp.array([M[1, 2], M[0, 2]])
+    #     Minv = cp.linalg.inv(matrix.T)
+    #     offset_sci = -Minv @ offset
+    #
+    #     out_gpu = cp.zeros_like(stack_gpu)
+    #
+    #     # Batch GPU processing (loop is cheap on GPU)
+    #     for i in range(stack_gpu.shape[0]):
+    #         out_gpu[i] = affine_transform(stack_gpu[i], Minv, offset=offset_sci, order=1)
+    #
+    #     return cp.asnumpy(out_gpu).astype(np.uint16)
 
-        matrix = cp.array([[M[0, 0], M[0, 1]],
-                           [M[1, 0], M[1, 1]]])
-        offset = cp.array([M[1, 2], M[0, 2]])
-        Minv = cp.linalg.inv(matrix.T)
-        offset_sci = -Minv @ offset
+    def apply_affine_gpu_batch(self, stack, T):
+        stack_gpu = cp.asarray(stack, dtype=cp.float32)
 
-        out_gpu = cp.zeros_like(stack_gpu)
+        # Extract forward transform
+        A = cp.array([[T[0, 0], T[0, 1]],
+                      [T[1, 0], T[1, 1]]], dtype=cp.float32)
 
-        # Batch GPU processing (loop is cheap on GPU)
+        t = cp.array([T[0, 2], T[1, 2]], dtype=cp.float32)
+
+        # scipy expects inverse mapping: output -> input
+        A_inv = cp.linalg.inv(A)
+
+        # Convert (x,y) to (row,col) == (y,x)
+        matrix = cp.array([
+            [A_inv[1, 1], A_inv[1, 0]],
+            [A_inv[0, 1], A_inv[0, 0]]
+        ])
+
+        offset = cp.array([
+            -A_inv[1] @ t,
+            -A_inv[0] @ t
+        ])
+
+        out = cp.empty_like(stack_gpu)
+
         for i in range(stack_gpu.shape[0]):
-            out_gpu[i] = affine_transform(stack_gpu[i], Minv, offset=offset_sci, order=1)
+            out[i] = affine_transform(
+                stack_gpu[i],
+                matrix=matrix,
+                offset=offset,
+                order=1,
+                mode='constant',
+                cval=0
+            )
 
-        return cp.asnumpy(out_gpu).astype(np.uint16)
+        return cp.asnumpy(out).astype(np.uint16)
 
     def crop_and_rotate_gpu(self, chunk_size=400):
         if self._currentDataObj is None:
