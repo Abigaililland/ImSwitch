@@ -166,7 +166,7 @@ class TriggerScopePLSRMulticolorController(ImConWidgetController):
             self._widget.setCycleScanDevice(self._deviceParameterDict['cycleScanDevice'])
             self._widget.setCameraTTL(self._deviceParameterDict['CameraTTL'])
             self._widget.setLaser2(self._deviceParameterDict['Laser2'])
-            self._widget.setLaser2(self._deviceParameterDict['Laser3'])
+            self._widget.setLaser3(self._deviceParameterDict['Laser3'])
             self._widget.setMulticolorScanDevice(self._deviceParameterDict['MulticolorScanDevice'])
 
         finally:
